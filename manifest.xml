@@ -1,0 +1,15 @@
+<package>
+  <description brief="expressions">
+
+     expressions
+
+  </description>
+  <author>Cedric Pradalier</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/crystals</url>
+  <depend package="roscpp"/>
+
+</package>
+
+
