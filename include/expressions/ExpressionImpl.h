@@ -11,6 +11,8 @@
 
 #include "expressions/Expressions.h"
 
+#define EX(x) ExpressionPtr(new x)
+
 using boost::format;
 
 typedef enum {
@@ -49,7 +51,7 @@ class ExpressionConst : public ExpressionImpl {
             return val;
         }
         virtual ExpressionPtr jacobian(const VariableId & ids) const {
-            return ExpressionPtr(new ExpressionConst(0.0));
+            return EX(ExpressionConst(0.0));
         }
         virtual std::string toString() const {return str(format("%g") % val);}
         virtual void collectVariables(std::set<std::string> names) const {}
@@ -71,7 +73,7 @@ class ExpressionVariable : public ExpressionImpl {
         }
         virtual ExpressionPtr jacobian(const VariableId & ids) const {
             // TODO: because this requires matrix/vector types
-            return ExpressionPtr(new ExpressionConst(1.0));
+            return EX(ExpressionConst(1.0));
         }
 
         virtual std::string toString() const {return name;}
