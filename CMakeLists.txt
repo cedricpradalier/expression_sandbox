@@ -26,10 +26,24 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #target_link_libraries(${PROJECT_NAME} another_library)
 rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
+# eigen 2 or 3
+find_path(EIGEN_INCLUDE_DIR Eigen/Core
+	/usr/local/include/eigen3
+	/usr/local/include/eigen2
+	/usr/local/include/eigen
+	/usr/include/eigen3
+	/usr/include/eigen2
+	/usr/include/eigen
+	/opt/ros/diamondback/stacks/geometry/eigen/include
+)
+include_directories(${EIGEN_INCLUDE_DIR})
 
-add_executable(test_exp src/test.cpp 
-    src/Expressions.cpp
-    src/ExpressionImpl.cpp)
+
+add_executable(test_pe src/test_pe.cpp)
+
+# add_executable(test_exp src/test.cpp 
+#     src/Expressions.cpp
+#     src/ExpressionImpl.cpp)
 
 # rosbuild_add_executable(prepare_eigen_problem src/prepare_eigen_problem.cpp)
 # target_link_libraries(normalized_cut lapack blas)
