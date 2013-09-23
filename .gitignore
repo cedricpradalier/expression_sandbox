@@ -11,3 +11,8 @@
 *.lai
 *.la
 *.a
+/bin
+/build
+/.cproject
+/.project
+/.pydevproject
