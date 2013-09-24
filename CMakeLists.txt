@@ -7,9 +7,12 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
+#set(ROS_BUILD_TYPE Release)
 set(ROS_BUILD_TYPE Debug)
 
 rosbuild_init()
+
+add_definitions(-std=c++11  -Wno-enum-compare -Wno-unused-local-typedefs -gdwarf-2)
 
 #set the default path for built executables to the "bin" directory
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
@@ -38,12 +41,17 @@ find_path(EIGEN_INCLUDE_DIR Eigen/Core
 )
 include_directories(${EIGEN_INCLUDE_DIR})
 
-
 add_executable(test_pe src/test_pe.cpp)
 
-# add_executable(test_exp src/test.cpp 
+add_executable(TestTypedExpresssions src/TestTypedExpressions.cpp)
+#set_target_properties(TestTypedExpresssions PROPERTIES COMPILE_FLAGS "-fverbose-asm -Wa,-adhln=TestTypedExpresssions.S,")
+
+
+#add_executable(test_exp src/test.cpp 
 #     src/Expressions.cpp
 #     src/ExpressionImpl.cpp)
+     
+rosbuild_add_gtest(test_requirements test/requirements.cpp test/test_main.cpp)
 
 # rosbuild_add_executable(prepare_eigen_problem src/prepare_eigen_problem.cpp)
 # target_link_libraries(normalized_cut lapack blas)
