@@ -8,6 +8,7 @@
 #ifndef TYPEDEXPRESSIONS_HPP_
 #define TYPEDEXPRESSIONS_HPP_
 
+#include <stdexcept>
 #include <memory>
 
 namespace tex {

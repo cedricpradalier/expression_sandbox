@@ -84,25 +84,25 @@ class EuclideanPoint {
   }
 
   EuclideanPoint(){
-    for(int i = 0; i < Dimension; i ++) { value[i] = 0; }
+    for(size_t i = 0; i < Dimension; i ++) { value[i] = 0; }
   }
 
   EuclideanPoint evalSum (const EuclideanPoint & other) const {
     EuclideanPoint r;
-    for(int i = 0; i < Dimension; i ++) { r.value[i] = value[i] + other.value[i]; }
+    for(size_t i = 0; i < Dimension; i ++) { r.value[i] = value[i] + other.value[i]; }
     return r;
   }
 
   EuclideanPoint(std::initializer_list<double> entries){
     if(entries.size() > Dimension) throw std::runtime_error("too many initializing entries");
-    int i = 0;
+    size_t i = 0;
     for(double d : entries) { value[i++] = d; }
     for(; i < Dimension; i ++) { value[i] = 0; }
   }
 
   Scalar<double> evalDot(const EuclideanPoint & other) const {
     double r = 0;
-    for(int i = 0; i < Dimension; i ++) { r+= value[i] * other.value[i]; }
+    for(size_t i = 0; i < Dimension; i ++) { r+= value[i] * other.value[i]; }
     return r;
   }
 
@@ -119,7 +119,7 @@ class EuclideanPoint {
   std::ostream & operator << (std::ostream & out, const EuclideanPoint & ob) {
     static_assert(Dimension > 0, "");
     out << "[" << ob.value[0];
-    for(int i = 1; i < Dimension; i ++) { out << ", " << ob.value[i]; }
+    for(size_t i = 1; i < Dimension; i ++) { out << ", " << ob.value[i]; }
     return out << "]";
   }
 
