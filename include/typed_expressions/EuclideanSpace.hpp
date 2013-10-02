@@ -56,11 +56,10 @@ template <typename A, typename B, typename Space_ = RESULT_SPACE(evalDot, A, B)>
 class Dot : public BinOpBase<A, B, Space_, Dot<A, B, Space_> > {
  public:
   typedef BinOpBase<A, B, Space_, Dot<A, B, Space_> > Base;
-  typedef Space_ Space;
 
   Dot(const A & a, const B & b) : Base(a, b){}
 
-  Space eval() const {
+  Space_ eval() const {
     return this->getA().eval().evalDot(this->getB().eval());
   }
 
@@ -69,6 +68,14 @@ class Dot : public BinOpBase<A, B, Space_, Dot<A, B, Space_> > {
     return out << "<" << op.getA() << ", " << op.getB() << ">";
   }
 };
+
+namespace internal {
+  template <typename A, typename B, typename Space>
+  struct get_space<Dot<A, B, Space >>{
+   public:
+    typedef Space type;
+  };
+}
 
 template <typename A, typename B, typename Result = Dot<A, B> >
 inline typename Result::App dot(const A & a, const B & b){
@@ -129,14 +136,6 @@ class EuclideanPoint {
  private:
   double value[Dimension];
 };
-
-namespace internal {
-  template <typename A, typename B, typename Space>
-  struct get_space<Dot<A, B, Space >>{
-   public:
-    typedef Space type;
-  };
-}
 
 template <size_t Dim_, typename DERIVED>
 struct OpMemberBase<EuclideanPoint<Dim_>, DERIVED> {
