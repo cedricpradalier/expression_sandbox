@@ -21,10 +21,10 @@ struct L {
 
 void someUnitTests(){
   using namespace tex;
-  static_assert(std::is_same<SimpleSpace, typename UnwrapValueType<SimpleSpace>::type >::value, "");
-  static_assert(std::is_same<SimpleSpace, typename UnwrapValueType<Plus<SimpleSpace, SimpleSpace>>::type >::value, "");
-  static_assert(std::is_same<SimpleSpace, typename UnwrapValueType<ErasingPtr<SimpleSpace> >::type >::value, "");
-  static_assert(std::is_same<SimpleSpace, typename UnwrapValueType<ErasingPtr<SimpleSpace> >::type >::value, "");
+  static_assert(std::is_same<SimpleSpace, typename get_space<SimpleSpace>::type >::value, "");
+  static_assert(std::is_same<SimpleSpace, typename get_space<Plus<SimpleSpace, SimpleSpace>>::type >::value, "");
+  static_assert(std::is_same<SimpleSpace, typename get_space<ErasingPtr<SimpleSpace> >::type >::value, "");
+  static_assert(std::is_same<SimpleSpace, typename get_space<ErasingPtr<SimpleSpace> >::type >::value, "");
 
   static_assert(1 == L<1>::Level, "");
   static_assert(0 == internal::getNextLevel<L<1>, L<2> >(), "");

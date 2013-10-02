@@ -52,15 +52,15 @@ class Scalar {
 };
 
 
-template <typename A, typename B, typename ValueType_ = RESULT_TYPE(evalDot, A, B)>
-class Dot : public BinOpBase<A, B, ValueType_, Dot<A, B, ValueType_> > {
+template <typename A, typename B, typename Space_ = RESULT_SPACE(evalDot, A, B)>
+class Dot : public BinOpBase<A, B, Space_, Dot<A, B, Space_> > {
  public:
-  typedef BinOpBase<A, B, ValueType_, Dot<A, B, ValueType_> > Base;
-  typedef ValueType_ ValueType;
+  typedef BinOpBase<A, B, Space_, Dot<A, B, Space_> > Base;
+  typedef Space_ Space;
 
   Dot(const A & a, const B & b) : Base(a, b){}
 
-  ValueType eval() const {
+  Space eval() const {
     return this->getA().eval().evalDot(this->getB().eval());
   }
 
@@ -131,10 +131,10 @@ class EuclideanPoint {
 };
 
 namespace internal {
-  template <typename DERIVED, typename Other, typename ValueType>
-  struct UnwrapValueType<Dot<DERIVED, Other, ValueType >>{
+  template <typename A, typename B, typename Space>
+  struct get_space<Dot<A, B, Space >>{
    public:
-    typedef ValueType type;
+    typedef Space type;
   };
 }
 
@@ -199,15 +199,15 @@ class EuclideanRotation {
   }
 };
 
-template <typename A, typename B, typename ValueType_ = RESULT_TYPE(evalRotate, A, B)>
-class Rotate : public BinOpBase<A, B, ValueType_, Rotate<A, B, ValueType_> > {
+template <typename A, typename B, typename Space_ = RESULT_SPACE(evalRotate, A, B)>
+class Rotate : public BinOpBase<A, B, Space_, Rotate<A, B, Space_> > {
  public:
-  typedef BinOpBase<A, B, ValueType_, Rotate<A, B, ValueType_> > Base;
-  typedef ValueType_ ValueType;
+  typedef BinOpBase<A, B, Space_, Rotate<A, B, Space_> > Base;
+  typedef Space_ Space;
 
   Rotate(const A & a, const B & b) : Base(a, b){}
 
-  ValueType eval() const {
+  Space eval() const {
     return this->getA().eval().evalRotate(this->getB().eval());
   }
 
@@ -218,10 +218,10 @@ class Rotate : public BinOpBase<A, B, ValueType_, Rotate<A, B, ValueType_> > {
 };
 
 namespace internal {
-  template <typename DERIVED, typename Other, typename ValueType>
-  struct UnwrapValueType<Rotate<DERIVED, Other, ValueType >>{
+  template <typename A, typename B, typename Space>
+  struct get_space<Rotate<A, B, Space >>{
    public:
-    typedef ValueType type;
+    typedef Space type;
   };
 }
 

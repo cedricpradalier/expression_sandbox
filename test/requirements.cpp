@@ -24,8 +24,8 @@ bool isNear(typename EuclideanSpace<Dim_>::Point a, typename EuclideanSpace<Dim_
 }
 
 void SomeCompileTimeTests(){
-  ::testing::StaticAssertTypeEq<EuclideanSpace<2>::Point, typename UnwrapValueType<tex::Plus<EuclideanSpace<2>::Point, EuclideanSpace<2>::Point, EuclideanSpace<2>::Point > >::type >();
-  ::testing::StaticAssertTypeEq<EuclideanSpace<2>::Point, typename UnwrapValueType<tex::Rotate<EuclideanSpace<2>::Rotation, EuclideanSpace<2>::Point, EuclideanSpace<2>::Point > >::type >();
+  ::testing::StaticAssertTypeEq<EuclideanSpace<2>::Point, typename get_space<tex::Plus<EuclideanSpace<2>::Point, EuclideanSpace<2>::Point, EuclideanSpace<2>::Point > >::type >();
+  ::testing::StaticAssertTypeEq<EuclideanSpace<2>::Point, typename get_space<tex::Rotate<EuclideanSpace<2>::Rotation, EuclideanSpace<2>::Point, EuclideanSpace<2>::Point > >::type >();
 }
 
 TEST(Requirements, Scalar){

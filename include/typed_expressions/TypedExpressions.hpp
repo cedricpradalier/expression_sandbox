@@ -17,12 +17,12 @@ constexpr static int DefaultLevel = 10;
 
 // **************** operational base ***************
 
-template <typename ValueType_>
+template <typename Space_>
 struct OpBase {
-  typedef ValueType_ ValueType;
+  typedef Space_ Space;
 };
 
-template <typename ValueType_, typename DERIVED>
+template <typename Space_, typename DERIVED>
 struct OpMemberBase {
 };
 
@@ -30,10 +30,10 @@ struct OpMemberBase {
 
 namespace internal {
   template <typename R>
-  struct UnwrapValueType{
+  struct get_space{
    private:
-    template <typename ValueType_>
-    static ValueType_& unwrap(OpBase<ValueType_>*);
+    template <typename Space_>
+    static Space_& unwrap(OpBase<Space_>*);
     static R& unwrap(...);
    public:
     typedef typename std::remove_reference<decltype(unwrap((R*)nullptr))>::type type;
@@ -66,16 +66,16 @@ namespace internal {
     return max(0, min(getLevel<A>(), getLevel<B>()) - 1);
   };
 }
-using internal::UnwrapValueType;
+using internal::get_space;
 
 // **************** virtual operational base ***************
 
-template <typename ValueType_>
-class VOpBase : public OpBase<ValueType_> {
+template <typename Space_>
+class VOpBase : public OpBase<Space_> {
  public:
-  typedef ValueType_ ValueType;
+  typedef Space_ Space;
 
-  inline ValueType eval() const { return evalImpl(); }
+  inline Space eval() const { return evalImpl(); }
 
   friend std::ostream & operator <<(std::ostream & out, const VOpBase & op){
     op.printImpl(out);
@@ -84,13 +84,13 @@ class VOpBase : public OpBase<ValueType_> {
 
   virtual ~VOpBase(){};
  private:
-  virtual ValueType evalImpl() const = 0;
+  virtual Space evalImpl() const = 0;
   virtual void printImpl(std::ostream & out) const = 0;
 };
 
 template <typename ExpType_, typename PtrType_ = std::shared_ptr<const ExpType_>, bool cloneIt = true>
-struct ExpPtr : public OpBase<typename UnwrapValueType<ExpType_>::type>, public OpMemberBase<typename UnwrapValueType<ExpType_>::type, ExpPtr<ExpType_, PtrType_, cloneIt> >{
-  typedef typename UnwrapValueType<ExpType_>::type ValueType;
+struct ExpPtr : public OpBase<typename get_space<ExpType_>::type>, public OpMemberBase<typename get_space<ExpType_>::type, ExpPtr<ExpType_, PtrType_, cloneIt> >{
+  typedef typename get_space<ExpType_>::type Space;
   typedef ExpType_ ExpType;
   typedef PtrType_ PtrType;
 
@@ -104,7 +104,7 @@ struct ExpPtr : public OpBase<typename UnwrapValueType<ExpType_>::type>, public 
     return *ptr_;
   }
 
-  inline ValueType eval() const { return ptr_->eval(); }
+  inline Space eval() const { return ptr_->eval(); }
   friend std::ostream & operator <<(std::ostream & out, const ExpPtr & eptr){
     return out << "@" << *eptr.ptr_;
   }
@@ -112,10 +112,10 @@ struct ExpPtr : public OpBase<typename UnwrapValueType<ExpType_>::type>, public 
   PtrType ptr_;
 };
 
-template <typename ValueType_>
-struct ErasingPtr : public ExpPtr<VOpBase<ValueType_> > {
-  typedef ExpPtr<VOpBase<ValueType_> > Base;
-  typedef ValueType_ ValueType;
+template <typename Space_>
+struct ErasingPtr : public ExpPtr<VOpBase<Space_> > {
+  typedef ExpPtr<VOpBase<Space_> > Base;
+  typedef Space_ Space;
   typedef typename Base::PtrType PtrType;
   constexpr static int Level = DefaultLevel;
 
@@ -132,14 +132,14 @@ struct ErasingPtr : public ExpPtr<VOpBase<ValueType_> > {
 
 namespace internal {
   template <typename ExpType_, typename PtrType_, bool cloneIt>
-  struct UnwrapValueType<ExpPtr<ExpType_, PtrType_, cloneIt> >{
+  struct get_space<ExpPtr<ExpType_, PtrType_, cloneIt> >{
    public:
-    typedef typename UnwrapValueType<ExpType_>::type type;
+    typedef typename get_space<ExpType_>::type type;
   };
-  template <typename ValueType_>
-  struct UnwrapValueType<ErasingPtr<ValueType_>>{
+  template <typename Space_>
+  struct get_space<ErasingPtr<Space_>>{
    public:
-    typedef ValueType_ type;
+    typedef Space_ type;
   };
 }
 
@@ -150,31 +150,31 @@ struct OperandStorage{
   typedef T EvaluableType;
 };
 
-template <typename ValueType>
-struct OperandStorage<ErasingPtr<ValueType>, 0>{
-  typedef ErasingPtr<ValueType> StorageType;
-  typedef ErasingPtr<ValueType> EvaluableType;
+template <typename Space>
+struct OperandStorage<ErasingPtr<Space>, 0>{
+  typedef ErasingPtr<Space> StorageType;
+  typedef ErasingPtr<Space> EvaluableType;
 };
 
-template <typename ValueType_, typename DERIVED, int Level_>
-class GenericOp : public OpMemberBase<ValueType_, DERIVED>, public OpBase<ValueType_> {
+template <typename Space_, typename DERIVED, int Level_>
+class GenericOp : public OpMemberBase<Space_, DERIVED>, public OpBase<Space_> {
  public:
   typedef DERIVED App;
   constexpr static int Level = Level_;
-  typedef ValueType_ ValueType;
+  typedef Space_ Space;
 };
 
 
-template <typename ValueType_, typename DERIVED>
-class GenericOp<ValueType_, DERIVED, 0> : public VOpBase<ValueType_> , public OpMemberBase<ValueType_, DERIVED> {
+template <typename Space_, typename DERIVED>
+class GenericOp<Space_, DERIVED, 0> : public VOpBase<Space_> , public OpMemberBase<Space_, DERIVED> {
  public:
-  typedef ErasingPtr<ValueType_> App;
+  typedef ErasingPtr<Space_> App;
   constexpr static int Level = DefaultLevel;
 
   virtual ~GenericOp(){};
  private:
-  virtual ValueType_ evalImpl() const {
-    static_assert(!std::is_same<decltype(&DERIVED::eval), decltype(&VOpBase<ValueType_>::eval)>::value, "Eval must be shadowed in an Operation");
+  virtual Space_ evalImpl() const {
+    static_assert(!std::is_same<decltype(&DERIVED::eval), decltype(&VOpBase<Space_>::eval)>::value, "Eval must be shadowed in an Operation");
     return static_cast<const DERIVED&>(*this).eval();
   }
   virtual void printImpl(std::ostream & out) const {
@@ -183,9 +183,9 @@ class GenericOp<ValueType_, DERIVED, 0> : public VOpBase<ValueType_> , public Op
 };
 
 // **************** operators ****************
-template<typename A, typename B, typename ValueType_, typename DERIVED>
-class BinOpBase : public GenericOp<ValueType_, DERIVED, internal::getNextLevel<A, B>()> {
-  typedef GenericOp<ValueType_, DERIVED, internal::getNextLevel<A, B>()> Base;
+template<typename A, typename B, typename Space_, typename DERIVED>
+class BinOpBase : public GenericOp<Space_, DERIVED, internal::getNextLevel<A, B>()> {
+  typedef GenericOp<Space_, DERIVED, internal::getNextLevel<A, B>()> Base;
  protected:
   BinOpBase(const A & a, const B & b) : a_(a), b_(b) {}
   const typename OperandStorage<A, Base::Level>::EvaluableType & getA() const { return a_; }
@@ -195,17 +195,17 @@ class BinOpBase : public GenericOp<ValueType_, DERIVED, internal::getNextLevel<A
   typename OperandStorage<B, Base::Level>::StorageType b_;
 };
 
-#define RESULT_TYPE(METHOD, TYPE_A, TYPE_B) decltype(static_cast<typename UnwrapValueType<TYPE_A>::type*>(nullptr)->METHOD(*static_cast<typename UnwrapValueType<TYPE_B>::type*>(nullptr)))
+#define RESULT_SPACE(METHOD, TYPE_A, TYPE_B) decltype(static_cast<typename get_space<TYPE_A>::type*>(nullptr)->METHOD(*static_cast<typename get_space<TYPE_B>::type*>(nullptr)))
 
-template <typename A, typename B, typename ValueType_ = RESULT_TYPE(evalSum, A, B)>
-class Plus : public BinOpBase<A, B, ValueType_, Plus<A, B, ValueType_> >{
+template <typename A, typename B, typename Space_ = RESULT_SPACE(evalSum, A, B)>
+class Plus : public BinOpBase<A, B, Space_, Plus<A, B, Space_> >{
  public:
-  typedef BinOpBase<A, B, ValueType_, Plus<A, B, ValueType_> > Base;
-  typedef ValueType_ ValueType;
+  typedef BinOpBase<A, B, Space_, Plus<A, B, Space_> > Base;
+  typedef Space_ Space;
 
   Plus(const A & a, const B & b) : Base(a, b){}
 
-  ValueType eval() const {
+  Space eval() const {
     return this->getA().eval().evalSum(this->getB().eval());
   }
 
@@ -220,15 +220,15 @@ inline typename Result::App operator + (const A & a, const B & b){
   return Result(a, b);
 }
 
-template <typename A, typename B, typename ValueType_ = RESULT_TYPE(evalTimes, A, B)>
-class Times : public BinOpBase<A, B, ValueType_, Times<A, B, ValueType_> >{
+template <typename A, typename B, typename Space_ = RESULT_SPACE(evalTimes, A, B)>
+class Times : public BinOpBase<A, B, Space_, Times<A, B, Space_> >{
  public:
-  typedef BinOpBase<A, B, ValueType_, Times<A, B, ValueType_> > Base;
-  typedef ValueType_ ValueType;
+  typedef BinOpBase<A, B, Space_, Times<A, B, Space_> > Base;
+  typedef Space_ Space;
 
   Times(const A & a, const B & b) : Base(a, b){}
 
-  ValueType eval() const {
+  Space eval() const {
     return this->getA().eval().evalTimes(this->getB().eval());
   }
 
@@ -244,15 +244,15 @@ inline typename Result::App operator * (const A & a, const B & b){
 }
 
 namespace internal {
-  template <typename DERIVED, typename Other, typename ValueType>
-  struct UnwrapValueType<Plus<DERIVED, Other, ValueType >>{
+  template <typename A, typename B, typename Space>
+  struct get_space<Plus<A, B, Space >>{
    public:
-    typedef ValueType type;
+    typedef Space type;
   };
-  template <typename DERIVED, typename Other, typename ValueType>
-  struct UnwrapValueType<Times<DERIVED, Other, ValueType >>{
+  template <typename A, typename B, typename Space>
+  struct get_space<Times<A, B, Space >>{
    public:
-    typedef ValueType type;
+    typedef Space type;
   };
 }
 
@@ -310,11 +310,11 @@ struct OperandStorage<Variable<ExpType, true>, Level> {
 
 
 template <typename T>
-struct VWrapper : public T, public VOpBase<typename UnwrapValueType<T>::type> {
-  typedef typename UnwrapValueType<T>::type ValueType;
+struct VWrapper : public T, public VOpBase<typename get_space<T>::type> {
+  typedef typename get_space<T>::type Space;
   VWrapper(const T & t) : T(t) {}
   virtual ~VWrapper(){}
-  virtual ValueType evalImpl() const {
+  virtual Space evalImpl() const {
     return static_cast<const T&>(*this).eval();
   }
   virtual void printImpl(std::ostream & out) const {
@@ -323,18 +323,18 @@ struct VWrapper : public T, public VOpBase<typename UnwrapValueType<T>::type> {
 };
 
 
-template <typename ValueType_>
-class Exp : public ErasingPtr<ValueType_> {
+template <typename Space_>
+class Exp : public ErasingPtr<Space_> {
  public:
-  typedef ErasingPtr<ValueType_> Base;
-  Exp(const ErasingPtr<ValueType_> & p) : Base(p){}
+  typedef ErasingPtr<Space_> Base;
+  Exp(const ErasingPtr<Space_> & p) : Base(p){}
 
   template<typename PtrType_, bool cloneIt>
-  Exp(const ExpPtr<ValueType_, PtrType_, cloneIt> & p) : Base(p){}
+  Exp(const ExpPtr<Space_, PtrType_, cloneIt> & p) : Base(p){}
 
-  Exp(const VOpBase<ValueType_> & p) : Base(p){}
+  Exp(const VOpBase<Space_> & p) : Base(p){}
 
-  template<typename T, typename = std::enable_if<std::is_same<typename UnwrapValueType<T>::type, ValueType_>::value> >
+  template<typename T, typename = std::enable_if<std::is_same<typename get_space<T>::type, Space_>::value> >
   Exp(const T & t) : Base(typename Base::PtrType(new VWrapper<T>(t))){}
 
   friend std::ostream & operator << (std::ostream & out, const Exp & exp) {
@@ -344,16 +344,16 @@ class Exp : public ErasingPtr<ValueType_> {
 };
 
 namespace internal {
-  template <typename ValueType>
-  struct UnwrapValueType<VWrapper<ValueType >>{
+  template <typename Space>
+  struct get_space<VWrapper<Space >>{
    public:
-    typedef ValueType type;
+    typedef Space type;
   };
 
-  template <typename ValueType>
-  struct UnwrapValueType<Exp<ValueType >>{
+  template <typename Space>
+  struct get_space<Exp<Space >>{
    public:
-    typedef ValueType type;
+    typedef Space type;
   };
 }
 
