@@ -111,20 +111,100 @@ TEST(Requirements, EuclideanRotation){
 
 #ifdef SUPPORTS_USER_FUNCTION
 
-// simple function using virtual expression calculations
-Exp<EuclideanSpace<2>::Point> addY(const Exp<EuclideanSpace<2>::Point> x){
+// simple compound function using virtual expression calculations
+VExp<EuclideanSpace<2>::Point> addY(const VExp<EuclideanSpace<2>::Point> x){
   EuclideanSpace<2>::Point y{0, 1};
   return x + y;
 }
 
+// simple compound function fully templated on the input expressions
+template <typename Input>
+auto addYT(const Input x) -> decltype(x + EuclideanSpace<2>::Point()){ // with c++14 this duplication will most likely no longer be necessary
+  EuclideanSpace<2>::Point y{0, 1};
+  return x + y;
+}
+
+// simple compound function using virtual expression return type but templated on the input space - enforcing space type compatibility rule
+template <typename SpaceType, typename A, typename B>
+VExp<SpaceType> add(const AnyExp<SpaceType, A> & x, const AnyExp<SpaceType, B> & y) {
+  return x.getExp() + y.getExp(); // these getExp could be made unnecessary, but it would hurt a bit ...
+}
+
+//// simple elemental function overloaded for different input spaces
+EuclideanSpace<1>::Point addElementalImpl(EuclideanSpace<1>::Point x, EuclideanSpace<1>::Point y) {
+  EuclideanSpace<1>::Point ret;
+  ret[0] = x[0] + y[0];
+  return ret;
+}
+
+EuclideanSpace<2>::Point addElementalImpl(EuclideanSpace<2>::Point x, EuclideanSpace<2>::Point y) {
+  EuclideanSpace<2>::Point ret;
+  ret[0] = x[0] + y[0];
+  ret[1] = x[1] + y[1];
+  return ret;
+}
+
+// introducing the new name - sufficient for all implementations
+template <typename A, typename B, typename Space_ = RESULT_SPACE_GLOBAL(addElementalImpl, A, B)>
+class AddElemental : public BinOpBase<A, B, Space_, AddElemental<A, B, Space_> > {
+ public:
+  typedef BinOpBase<A, B, Space_, AddElemental<A, B, Space_> > Base;
+
+  AddElemental(const A & a, const B & b) : Base(a, b){}
+
+  Space_ eval() const {
+    return addElementalImpl(this->getA().eval(), this->getB().eval());
+  }
+
+  friend
+  std::ostream & operator << (std::ostream & out, const AddElemental & op) {
+    return out << "AddElemental(" << op.getA() << ", " << op.getB() << ")";
+  }
+};
+
+template <typename A, typename B, typename Result = AddElemental<A, B> >
+Result addElemental(const A & a, const B & b) {
+  return Result(a, b);
+}
+
+namespace tex{
+namespace internal {
+  template <typename A, typename B, typename Space>
+  struct get_space<AddElemental<A, B, Space >>{
+   public:
+    typedef Space type;
+  };
+}
+}
+
 TEST(Requirements, UserFunction){
-  EuclideanSpace<2>::Point x{1, 0}, y{0, 1}, w{sqrt(0.5), sqrt(0.5)};
+  EuclideanSpace<2>::Point x{1, 0}, y{0, 1};
 
   auto addYappliedToX = addY(x);
-
   PRINT_EXP(addYappliedToX);
-
   ASSERT_EQ((x+y).eval(), addYappliedToX.eval());
+
+  auto addYTAppliedToX = addYT(x);
+  PRINT_EXP(addYTAppliedToX);
+  ASSERT_EQ((x+y).eval(), addYTAppliedToX.eval());
+
+  auto addAppliedToXAndXPlusY = add(toExp(x), x + y);
+  PRINT_EXP(addAppliedToXAndXPlusY);
+  ASSERT_EQ((x+(x + y)).eval(), addAppliedToXAndXPlusY.eval());
+
+  // The following does correctly not compile, yielding instead : ".... note: deduced conflicting types for parameter ‘SpaceType’ (‘tex::EuclideanPoint<1ul>’ and ‘tex::EuclideanPoint<2ul>’)"
+  //auto addTappliedToXAndXPlusY = add(toExp(EuclideanSpace<2>::Point ), x + y);
+
+  auto addElementalAppliedToXAndXPlusY = addElemental(x, x + y);
+  PRINT_EXP(addElementalAppliedToXAndXPlusY);
+  ASSERT_EQ((x+(x + y)).eval(), addElementalAppliedToXAndXPlusY.eval());
+
+  EuclideanSpace<1>::Point x1{1}, y1{1};
+
+  auto addElementalAppliedToX1AndX1PlusY1 = addElemental(x1, x1 + y1);
+  PRINT_EXP(addElementalAppliedToX1AndX1PlusY1);
+  ASSERT_EQ((x1+(x1 + y1)).eval(), addElementalAppliedToX1AndX1PlusY1.eval());
+
 }
 
 #endif

@@ -118,7 +118,11 @@ class EuclideanPoint {
     return Ret(*this, other);
   }
 
-  Scalar<double> operator[](size_t i) const {
+  double & operator[](size_t i) {
+    return value[i];
+  }
+
+  const Scalar<double> operator[](size_t i) const {
     return value[i];
   }
 

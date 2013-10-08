@@ -17,6 +17,14 @@ constexpr static int DefaultLevel = 10;
 
 // **************** operational base ***************
 
+template <typename Space_, typename ExpType_>
+struct AnyExp {
+  inline const ExpType_ & getExp() const { return static_cast<ExpType_ const &>(*this); }
+  inline ExpType_ & getExp() { return static_cast<ExpType_&>(*this); }
+  inline operator const ExpType_ & () const { return getExp(); }
+  inline operator ExpType_ & () { return getExp(); }
+};
+
 template <typename Space_>
 struct OpBase {
   typedef Space_ Space;
@@ -71,7 +79,7 @@ using internal::get_space;
 // **************** virtual operational base ***************
 
 template <typename Space_>
-class VOpBase : public OpBase<Space_> {
+class VOpBase : public OpBase<Space_>, public AnyExp<Space_, VOpBase<Space_> > {
  public:
   typedef Space_ Space;
 
@@ -157,7 +165,7 @@ struct OperandStorage<ErasingPtr<Space>, 0>{
 };
 
 template <typename Space_, typename DERIVED, int Level_>
-class GenericOp : public OpMemberBase<Space_, DERIVED>, public OpBase<Space_> {
+class GenericOp : public OpMemberBase<Space_, DERIVED>, public OpBase<Space_>, public AnyExp<Space_, DERIVED> {
  public:
   typedef DERIVED App;
   constexpr static int Level = Level_;
@@ -166,7 +174,7 @@ class GenericOp : public OpMemberBase<Space_, DERIVED>, public OpBase<Space_> {
 
 
 template <typename Space_, typename DERIVED>
-class GenericOp<Space_, DERIVED, 0> : public VOpBase<Space_> , public OpMemberBase<Space_, DERIVED> {
+class GenericOp<Space_, DERIVED, 0> : public VOpBase<Space_> , public OpMemberBase<Space_, DERIVED>, public AnyExp<Space_, DERIVED> {
  public:
   typedef ErasingPtr<Space_> App;
   constexpr static int Level = DefaultLevel;
@@ -196,6 +204,9 @@ class BinOpBase : public GenericOp<Space_, DERIVED, internal::getNextLevel<A, B>
 };
 
 #define RESULT_SPACE(METHOD, TYPE_A, TYPE_B) decltype(static_cast<typename get_space<TYPE_A>::type*>(nullptr)->METHOD(*static_cast<typename get_space<TYPE_B>::type*>(nullptr)))
+
+#define RESULT_SPACE_GLOBAL(METHOD, TYPE_A, TYPE_B) decltype(METHOD(*static_cast<typename get_space<TYPE_A>::type*>(nullptr), *static_cast<typename get_space<TYPE_B>::type*>(nullptr)))
+
 
 template <typename A, typename B, typename Space_ = RESULT_SPACE(evalSum, A, B)>
 class Plus : public BinOpBase<A, B, Space_, Plus<A, B, Space_> >{
@@ -324,21 +335,21 @@ struct VWrapper : public T, public VOpBase<typename get_space<T>::type> {
 
 
 template <typename Space_>
-class Exp : public ErasingPtr<Space_> {
+class VExp : public ErasingPtr<Space_>, public AnyExp<Space_, VExp<Space_> > {
  public:
   typedef ErasingPtr<Space_> Base;
-  Exp(const ErasingPtr<Space_> & p) : Base(p){}
+  VExp(const ErasingPtr<Space_> & p) : Base(p){}
 
   template<typename PtrType_, bool cloneIt>
-  Exp(const ExpPtr<Space_, PtrType_, cloneIt> & p) : Base(p){}
+  VExp(const ExpPtr<Space_, PtrType_, cloneIt> & p) : Base(p){}
 
-  Exp(const VOpBase<Space_> & p) : Base(p){}
+  VExp(const VOpBase<Space_> & p) : Base(p){}
 
   template<typename T, typename = std::enable_if<std::is_same<typename get_space<T>::type, Space_>::value> >
-  Exp(const T & t) : Base(typename Base::PtrType(new VWrapper<T>(t))){}
+  VExp(const T & t) : Base(typename Base::PtrType(new VWrapper<T>(t))){}
 
-  friend std::ostream & operator << (std::ostream & out, const Exp & exp) {
-    out << "@exp" << *exp.ptr_;
+  friend std::ostream & operator << (std::ostream & out, const VExp & exp) {
+    out << "@vexp" << *exp.ptr_;
     return out;
   }
 };
@@ -351,11 +362,33 @@ namespace internal {
   };
 
   template <typename Space>
-  struct get_space<Exp<Space >>{
+  struct get_space<VExp<Space >>{
    public:
     typedef Space type;
   };
 }
+
+
+template <typename Space_> struct SWrapper : public Space_, public AnyExp<Space_, SWrapper<Space_> > {
+  typedef SWrapper<Space_> WrappedType;
+  SWrapper(const Space_ & v) : Space_(v) {}
+  static WrappedType wrap(Space_ v) {
+    return v;
+  }
+};
+
+template  <typename Space_, typename DERIVED>
+struct SWrapper<AnyExp<Space_, DERIVED>> {
+  typedef DERIVED WrappedType;
+  static WrappedType wrap(Space_ v) {
+    return v;
+  }
+};
+
+template <typename Any_, typename = typename get_space<Any_>::type >
+auto toExp(Any_ v) -> typename SWrapper<Any_>::WrappedType {
+  return SWrapper<Any_>::wrap(v);
+};
 
 
 #define SUPPORTS_USER_FUNCTION
