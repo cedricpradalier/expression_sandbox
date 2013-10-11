@@ -5,23 +5,10 @@
  *      Author: hannes
  */
 
-#include <type_traits>
-#include <gtest/gtest.h>
 #include <typed_expressions/EuclideanSpace.hpp>
-
-constexpr static double eps = std::numeric_limits<double>::epsilon();
-
-#define PRINT_EXP(EXP) std::cout <<  #EXP << " = " << EXP << " = " << EXP.eval() << std::endl;
+#include "TestTools.hpp"
 
 using namespace tex;
-
-template <int Dim_>
-bool isNear(typename EuclideanSpace<Dim_>::Point a, typename EuclideanSpace<Dim_>::Point b, double threshold){
-  for(int i = 0; i < Dim_; i++){
-    if(!(fabs(a[i] - b[i]) < threshold)) return false;
-  }
-  return true;
-}
 
 void SomeCompileTimeTests(){
   ::testing::StaticAssertTypeEq<EuclideanSpace<2>::Point, typename get_space<tex::Plus<EuclideanSpace<2>::Point, EuclideanSpace<2>::Point, EuclideanSpace<2>::Point > >::type >();
@@ -44,8 +31,8 @@ TEST(Requirements, ScalarVariables){
 
   ASSERT_EQ(Scalar<double>(3.0), xPlusY.eval());
 
-  x.setVal(x.getVal() + 1);
-  y.setVal(y.getVal() + 1);
+  x = (x.eval().getValue() + 1);
+  y = (y.eval().getValue() + 1);
   PRINT_EXP(xPlusY);
   ASSERT_EQ(Scalar<double>(5.0), xPlusY.eval());
 
@@ -167,7 +154,7 @@ Result addElemental(const A & a, const B & b) {
   return Result(a, b);
 }
 
-namespace tex{
+namespace TEX_NAMESPACE {
 namespace internal {
   template <typename A, typename B, typename Space>
   struct get_space<AddElemental<A, B, Space >>{

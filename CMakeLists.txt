@@ -7,8 +7,9 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-#set(ROS_BUILD_TYPE Release)
-set(ROS_BUILD_TYPE Debug)
+#set(ROS_BUILD_TYPE Relese)
+set(ROS_BUILD_TYPE RelWithDebInfo)
+#set(ROS_BUILD_TYPE Debug)
 
 rosbuild_init()
 
@@ -47,11 +48,30 @@ add_executable(TestTypedExpresssions src/TestTypedExpressions.cpp)
 #set_target_properties(TestTypedExpresssions PROPERTIES COMPILE_FLAGS "-fverbose-asm -Wa,-adhln=TestTypedExpresssions.S,")
 
 
+
+rosbuild_add_executable(benchmarker 
+	benchmark/malloc_count.c
+	benchmark/Benchmarker.cpp
+	benchmark/ProjectionProblem.cpp
+	benchmark/TypedExpressionSolverDepth10Eig.cpp
+	benchmark/TypedExpressionSolverDepth1Eig.cpp
+	benchmark/AslamExpressionSolver.cpp
+	benchmark/TypedExpressionSolverDepth10Simp.cpp
+	benchmark/TypedExpressionSolverDepth1Simp.cpp
+)
+target_link_libraries(benchmarker dl)
+#set_target_properties(benchmarker PROPERTIES COMPILE_FLAGS "-p")
+
 #add_executable(test_exp src/test.cpp 
 #     src/Expressions.cpp
 #     src/ExpressionImpl.cpp)
      
-rosbuild_add_gtest(test_requirements test/requirements.cpp test/test_main.cpp)
+rosbuild_add_gtest(test_requirements
+  test/requirements.cpp 
+  test/TestTools.cpp
+  test/TestRotations.cpp
+  test/test_main.cpp
+)
 
 # rosbuild_add_executable(prepare_eigen_problem src/prepare_eigen_problem.cpp)
 # target_link_libraries(normalized_cut lapack blas)
