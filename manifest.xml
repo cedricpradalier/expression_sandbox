@@ -9,6 +9,9 @@
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/crystals</url>
   <depend package="roscpp"/>
+  <depend package="eigen"/>
+  <depend package="aslam_backend"/>
+  <depend package="aslam_backend_expressions"/>
 
 </package>
 

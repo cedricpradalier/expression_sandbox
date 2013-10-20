@@ -33,7 +33,7 @@ void someUnitTests(){
 
 template <typename EXP>
 int evalIt_JustToLookAtTheCompilersListings (const EXP & ex) {
-  return ex.eval().getVal();
+  return ex.eval().getValue();
 }
 
 int main(int argc, char **argv) {
@@ -56,15 +56,15 @@ int main(int argc, char **argv) {
   auto y = ("y", x + a);
   auto z = ("z", y + a);
 
-  std::cout << "z=" << std::endl << z << "=" << z.eval().getVal() << std::endl; // XXX: debug output of x.eval()
+  std::cout << "z=" << std::endl << z << "=" << z.eval().getValue() << std::endl; // XXX: debug output of x.eval()
 
-  b.setVal(3);
-  std::cout << "z=" << std::endl << z << "=" << z.eval().getVal() << std::endl; // XXX: debug output of x.eval()
+  b = 3;
+  std::cout << "z=" << std::endl << z << "=" << z.eval().getValue() << std::endl; // XXX: debug output of x.eval()
 
   TemplatedSpace<2> A{1, 0}, B{0, 1};
   auto C = ("C", A + B);
   std::cout << "C=" << C << "="<< C.eval() << std::endl; // XXX debug output of C
 //  auto U = A + a; // should fail compilation!
 
-  return z.eval().getVal();
+  return z.eval().getValue();
 }
