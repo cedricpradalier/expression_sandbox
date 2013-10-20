@@ -1,20 +1,21 @@
 #!/usr/bin/python
 from sympy.matrices import *
-from sympy import sin,cos
+from sympy import sin,cos,sqrt
 from ErrorTerm import *
 
 def quaternion_inv(q):
     return Matrix([q[0],-q[1],-q[2],-q[3]])
 
 def quaternion_norm(q):
-    return sqrt(q.transpose() * q)
+    s = q.transpose() * q;
+    return sqrt(s[0,0])
 
 def quaternion_normalize(q):
     n = quaternion_norm(q)
     return q / n
 
-def quaternion_mul(q,p):
-    q = quaternion_normalize(q)
+def quaternion_mul(q_g,p):
+    q = quaternion_normalize(q_g)
     t2 =  q[0] * q[1];
     t3 =  q[0] * q[2];
     t4 =  q[0] * q[3];
@@ -38,15 +39,15 @@ q_2_3 = E.declareVariable('q_2_3',4);
 P_3 = E.declareVariable('P_3',3);
 
 q_1_2_inv = quaternion_inv(q_1_2)
-p_2 = quaternion_mul(q_2_3,p_3)
+p_2 = quaternion_mul(q_2_3,P_3)
 p_1 = quaternion_mul(q_1_2_inv,p_2)
 
 Up = Matrix([p_1[0]/p_1[2],p_1[1]/p_1[2]])
 F = U - Up
 E.setFunction(F)
 
-print F
-print E.J
+# print F
+# print E.J
 
-E.write_header(classname="ProjectionError",path="include/expressions")
+E.write_header(classname="PaulsGeneratedError",path="include/expressions")
 
