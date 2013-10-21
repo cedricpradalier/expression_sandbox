@@ -47,7 +47,7 @@ add_executable(test_pe src/test_pe.cpp)
 add_executable(test_pge src/test_pge.cpp)
 
 add_executable(TestTypedExpresssions src/TestTypedExpressions.cpp)
-set_target_properties(TestTypedExpresssions PROPERTIES COMPILE_FLAGS "-fverbose-asm -Wa,-adhln=TestTypedExpresssions.S,")
+#set_target_properties(TestTypedExpresssions PROPERTIES COMPILE_FLAGS "-fverbose-asm -Wa,-adhln=TestTypedExpresssions.S,")
 
 
 
