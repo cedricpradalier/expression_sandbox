@@ -32,12 +32,13 @@ class ErrorTerm:
         self.data[name] = v
         return v
 
-    def declareVariable(self, name, dim=1):
+    def declareVariable(self, name, dim=1, localDim=-1):
+        if(localDim == -1) : localDim = dim
         if dim == 1:
             v = Symbol(name)
         else:
             v = Matrix(dim,1,lambda i,j:Symbol("%s(%d)"%(name,i)))
-        self.variables.append((name,v))
+        self.variables.append((name,v,localDim))
         return v
 
     def setFunction(self, f):
@@ -46,7 +47,7 @@ class ErrorTerm:
 
 
     def prepareJacobian(self):
-        l = [matrixify(x) for n,x in self.variables]
+        l = [matrixify(x) for n,x,localDim in self.variables]
         if len(self.variables)==0:
             self.Vars = Matrix()
             self.J = zeros(self.function.rows,1)
@@ -98,19 +99,19 @@ class %s %s
         typedef std::map<std::string, Variable> VariableMap;
     protected:
         // The list of variables, their index and dimension
-        VariableMap variables;
+        //VariableMap variables;
         // Function value and jacobian
-        Eigen::VectorXd F;
-        Eigen::MatrixXd J;
+        //Eigen::VectorXd F;
+        //Eigen::MatrixXd J;
         // Data
 %s
     public:
         // Constructor
 %s
 
-        const Eigen::VectorXd & getValue() const {return F;}
-        const Eigen::MatrixXd & getJacobian() const {return J;}
-        const VariableMap & getVariables() const {return variables;}
+        //const Eigen::VectorXd & getValue() const {return F;}
+        //const Eigen::MatrixXd & getJacobian() const {return J;}
+        //const VariableMap & getVariables() const {return variables;}
 
         // Evaluate J and F
 %s
@@ -125,7 +126,7 @@ class %s %s
     def generateData(self):
         text = ""
         for name,v in self.data.items():
-            if v.is_Matrix:
+            if isinstance(v, Matrix):
                 text += "        Eigen::MatrixXd %s;\n" % name
             else:
                 text += "        double %s;\n" % name
@@ -135,26 +136,27 @@ class %s %s
         text = "        %s(\n" % classname
         args = []
         for name,v in self.data.items():
-            if v.is_Matrix:
-                args.append("           const Eigen::MatrixXd & _%s_" % name)
+            if isinstance(v, Matrix):
+                args.append("           const Eigen::Matrix<double, %d, 1> & %s" % v.dim, name)
             else:
                 args.append("           double _%s_" % name)
         text += ",\n".join(args) + "\n"
-        text += "        ) :\n"
-        args =["           F(%d), J(%d,%d)" % (self.function.rows,self.J.rows,self.J.cols)]
+        text += "        )"
+        args = [] #["           F(%d), J(%d,%d)" % (self.function.rows,self.J.rows,self.J.cols)]
         for name,v in self.data.items():
-            if v.is_Matrix:
+            if isinstance(v, Matrix):
                 args.append("           %s(_%s_)" % (name,name))
             else:
                 args.append("           %s(_%s_)" % (name,name))
-        text += ",\n".join(args) + "\n"
+        if(args):
+            text += ":\n".join(args) + "\n"
         text += "        {\n"
         idx = 0;
-        for n,v in self.variables:
+        for n,v,lD in self.variables:
             dim = 1
-            if v.is_Matrix:
+            if isinstance(v, Matrix):
                 dim = v.rows
-            text += "           variables[\"%s\"] = Variable(%d,%d);\n" \
+            text += "           //variables[\"%s\"] = Variable(%d,%d);\n" \
                     % (n,idx,dim)
             idx += dim
         text += "        }\n"
@@ -163,27 +165,37 @@ class %s %s
     def genEval(self):
         text = "        bool evaluate(\n"
         args=[]
-        for name,v in self.variables:
-            if v.is_Matrix:
-                args.append("           const Eigen::MatrixXd & %s" % name)
+        for name,v,lD in self.variables:
+            if isinstance(v, Matrix):
+                args.append("           const Eigen::Matrix<double, %d, 1> & %s" % (v.rows, name))
             else:
                 args.append("           double %s" % name)
-        args.append("           bool evalF=true,bool evalJ=true")
+                
+        args.append("           Eigen::Matrix<double, %d, 1> * F" % self.function.rows)
+        
+        for name,v,localDim in self.variables:
+            if isinstance(v, Matrix):
+                args.append("           Eigen::Matrix<double, %d, %d> * J%s" % (self.J.rows, localDim, name))
+            else:
+                args.append("           Eigen::Matrix<double, %d, 1> * J%s" % (self.J.rows, name))
         text += ",\n".join(args) + ") {\n"
-        text += "           if (evalF) {\n"
+        text += "           if (F) {\n"
         (interm, expr) = cse(self.function,numbered_symbols("__x"));
         for dummy,exp in interm:
             text += "               double %s = %s;\n" % (str(dummy),ccode(exp))
         for i in range(self.function.rows):
-            text += "               F(%d) = %s;\n" % (i,ccode(expr[0][i]))
+            text += "               (*F)(%d) = %s;\n" % (i,ccode(expr[0][i]))
         text += "           }\n"
-        text += "           if (evalJ) {\n"
+        text += "           if (%s) {\n" % " && ".join([ "J" + name for name,v,lD in self.variables ])
         (interm, expr) = cse(self.J,numbered_symbols("__x"));
         for dummy,exp in interm:
             text += "               double %s = %s;\n" % (str(dummy),ccode(exp))
-        for i in range(self.J.rows):
-            for j in range(self.J.cols):
-                text += "               J(%d,%d) = %s;\n" % (i,j,ccode(expr[0][i,j]))
+        colBase = 0;
+        for name,v,localDim in self.variables:
+            for i in range(self.J.rows):
+                for j in range(0, localDim):
+                    text += "               (*J%s)(%d,%d) = %s;\n" % (name, i,j,ccode(expr[0][i,colBase + j]))
+            colBase+=localDim
         text += "           }\n"
         text += "           return true;\n"
         text += "       }\n"
