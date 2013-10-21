@@ -9,6 +9,7 @@
 #include <typed_expressions/EigenLinalg.hpp>
 #define IMPLEMENT_DUMMY_SOLVER
 #include <benchmark/DummySolver.hpp>
+#include <benchmark/Benchmarker.hpp>
 #include "ProjectionProblem.hpp"
 
 #include <typed_expressions/UnitQuaternions.hpp>
@@ -123,3 +124,4 @@ void ProjectionProblem::calcSolutionInto(const Input & input, Output & output) {
 benchmark::DummySolver<projection_problem::ProjectionProblem> dummySolverInstance;
 
 typedef benchmark::ProblemSolver<projection_problem::ProjectionProblem> Solver;
+typedef benchmark::ProblemBenchmark<projection_problem::ProjectionProblem> Benchmark;

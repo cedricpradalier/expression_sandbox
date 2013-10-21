@@ -9,8 +9,8 @@
 
 #include "ProjectionProblem.hpp"
 #include <benchmark/ProblemSolver.hpp>
-#include <expressions/PaulsGeneratedError.h>
-#include <expressions/PaulsGeneratedErrorInTangentSpace.h>
+#include "generated/PaulsGeneratedError.h"
+#include "generated/PaulsGeneratedErrorInTangentSpace.h"
 #include <iostream>
 
 namespace projection_problem {

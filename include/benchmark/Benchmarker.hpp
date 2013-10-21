@@ -5,6 +5,7 @@
  *      Author: hannes
  */
 #include <unordered_map>
+#include <memory>
 #include <iostream>
 #include <iomanip>
 #include <chrono>
@@ -45,30 +46,45 @@ class StopWatch {
   std::chrono::steady_clock::time_point start;
   std::clock_t cpuStart;
 };
-std::ostream & operator << (std::ostream & out, const typename StopWatch::duration::durationType & duration){
-  out << std::chrono::duration_cast<std::chrono::duration<double> >(duration).count();
-  return out;
-}
 
-std::ostream & operator << (std::ostream & out, const typename StopWatch::duration & duration){
-  out << duration.duration << "s" << ", CPU:" << ((double) duration.cpuDuration / 1000000) << "s";
-  return out;
-}
+std::ostream & operator << (std::ostream & out, const typename StopWatch::duration::durationType & duration);
+std::ostream & operator << (std::ostream & out, const typename StopWatch::duration & duration);
+
+class Benchmark {
+ public:
+  Benchmark(){ registerBenchmark(*this);}
+  virtual ~Benchmark(){}
 
 
+  class Instance {
+   public:
+    virtual void run(int argc, const char ** argv, int numberOfProblemInstancesToSolve, int numberOfRepetitions) = 0;
+    virtual void printHeader(std::ostream& out, const int nameWidth, const std::string& sep) const = 0;
+    virtual void printStat(std::ostream& out, const int nameWidth, const std::string& sep) const = 0;
+    virtual ~Instance(){}
+  };
+
+  virtual std::unique_ptr<Instance> createInstance(bool verbose = false) const = 0;
+
+  static std::vector<const Benchmark*> getBenchmarks() {
+    return benchmarkerRegister;
+  }
+ private:
+  static void registerBenchmark(const Benchmark& benchmark){
+    benchmarkerRegister.push_back(&benchmark);
+  }
+  static std::vector<const Benchmark*> benchmarkerRegister;
+};
 
 template <typename Problem_>
-class Benchmarker {
+class BenchmarkInstance : public Benchmark::Instance {
  public:
   typedef Problem_ Problem;
   typedef ProblemSolver<Problem> Solver;
 
-  Benchmarker(bool verbose = false) : verbose(verbose) {}
+  BenchmarkInstance(bool verbose = false) : verbose(verbose) {}
 
-  void run(int argc, const char ** argv, const std::vector<const Solver*> & solverPtrs,
-           int numberOfProblemInstancesToSolve = 1000,
-           int numberOfRepetitions = 10000
-           );
+  void run(int argc, const char ** argv, int numberOfProblemInstancesToSolve, int numberOfRepetitions);
   void printHeader(std::ostream& out, const int nameWidth, const std::string& sep) const;
   void printStat(std::ostream& out, const int nameWidth, const std::string& sep) const;
 
@@ -135,7 +151,7 @@ class Benchmarker {
     std::vector<SolvingVariantStat> solvingStats;
     size_t usedMemory;
 
-    friend Benchmarker;
+    friend BenchmarkInstance;
   };
 
   struct SolverData {
@@ -179,12 +195,12 @@ class Benchmarker {
 
 
 template <typename Problem_>
-void Benchmarker<Problem_> ::Statistics::calc() {
+void BenchmarkInstance<Problem_> ::Statistics::calc() {
   for(auto & v: solvingStats) v.calc();
 }
 
 template <typename Problem_>
-void Benchmarker<Problem_> ::Statistics::SolvingVariantStat::calc() {
+void BenchmarkInstance<Problem_> ::Statistics::SolvingVariantStat::calc() {
   double tmp = 0;
   for(double e : errors){
     tmp += e;
@@ -200,14 +216,14 @@ void Benchmarker<Problem_> ::Statistics::SolvingVariantStat::calc() {
 
 
 template<typename Problem_>
-void Benchmarker<Problem_>::printHeader(std::ostream& out, const int nameWidth, const std::string& sep) const {
+void BenchmarkInstance<Problem_>::printHeader(std::ostream& out, const int nameWidth, const std::string& sep) const {
   out << std::setw(nameWidth) << "Name" << sep;
   Statistics::outHeaderList(p, out, sep);
   out << std::endl;
 }
 
 template<typename Problem_>
-void Benchmarker<Problem_>::printStat(std::ostream& out, const int nameWidth, const std::string& sep) const {
+void BenchmarkInstance<Problem_>::printStat(std::ostream& out, const int nameWidth, const std::string& sep) const {
   for (const SolverData& sd : solverData) {
     out << std::setw(nameWidth) << sd.solver.getName() << sep;
     sd.stat.outList(out, sep);
@@ -216,9 +232,8 @@ void Benchmarker<Problem_>::printStat(std::ostream& out, const int nameWidth, co
 }
 
 template <typename Problem_>
-void Benchmarker<Problem_>::run(int argc, const char ** argv, const std::vector<const Solver*> & solverPtrs,
-                                int numberOfProblemInstancesToSolve, int numberOfRepetitions
-                                ){
+void BenchmarkInstance<Problem_>::run(int argc, const char ** argv, int numberOfProblemInstancesToSolve, int numberOfRepetitions){
+  const std::vector<const Solver*> & solverPtrs = ProblemSolver<Problem>::getSolvers();
 
   StopWatch stopWatch;
   createSolverData(solverPtrs, numberOfProblemInstancesToSolve);
@@ -254,5 +269,13 @@ void Benchmarker<Problem_>::run(int argc, const char ** argv, const std::vector<
     if(verbose) std::cout << "checkingResults:" << stopWatch.readAndReset() << std::endl;
   }
 }
+
+
+template <typename Problem_>
+class ProblemBenchmark : public Benchmark {
+  virtual std::unique_ptr<Instance> create(bool verbose = false) const {
+    return new BenchmarkInstance<Problem_>(verbose);
+  }
+};
 
 }

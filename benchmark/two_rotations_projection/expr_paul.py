@@ -1,6 +1,11 @@
 #!/usr/bin/python
 from sympy.matrices import *
 from sympy import sin,cos,sqrt,Subs
+
+from sys import path
+# the mock-0.3.1 dir contains testcase.py, testutils.py & mock.py
+path.append('../../src')
+
 from ErrorTerm import *
 
 def quaternion_inv(q):
@@ -60,7 +65,7 @@ def createE():
     P_3 = E.declareVariable('P_3',3);
     
     E.setFunction(createExp(q_1_2, q_2_3, P_3));
-    E.write_header(classname="PaulsGeneratedError",path="include/expressions")
+    E.write_header(classname="PaulsGeneratedError",path="generated")
 
 def createEt():
     Et = ErrorTerm(namespace="error_term")
@@ -91,7 +96,7 @@ def createEt():
     Et.data.pop('q_1_2');
     Et.data.pop('q_2_3');
 
-    Et.write_header(classname="PaulsGeneratedErrorInTangentSpace",path="include/expressions")
+    Et.write_header(classname="PaulsGeneratedErrorInTangentSpace",path="generated")
 
 #createE()
 createEt()

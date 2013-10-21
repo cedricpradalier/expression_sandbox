@@ -1,6 +1,6 @@
 
 #include <iostream>
-#include "expressions/PaulsGeneratedError.h"
+#include "generated/PaulsGeneratedError.h"
 #include <Eigen/Core>
 
 using namespace std;

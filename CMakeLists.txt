@@ -44,27 +44,27 @@ include_directories(${EIGEN_INCLUDE_DIR})
 
 add_executable(test_pe src/test_pe.cpp)
 
-add_executable(test_pge src/test_pge.cpp)
+add_executable(test_pge benchmark/two_rotations_projection/test_pge.cpp)
 
 add_executable(TestTypedExpresssions src/TestTypedExpressions.cpp)
 #set_target_properties(TestTypedExpresssions PROPERTIES COMPILE_FLAGS "-fverbose-asm -Wa,-adhln=TestTypedExpresssions.S,")
 
 
 
-rosbuild_add_executable(benchmarker 
+rosbuild_add_executable(benchmarker_two_rotations_projection 
 	benchmark/malloc_count.c
 	benchmark/Benchmarker.cpp
-	benchmark/ProjectionProblem.cpp
-	benchmark/GeneratedExpressionSolver.cpp
-	benchmark/CeresExpressionSolver.cpp
-	benchmark/TypedExpressionSolverDepth10Eig.cpp
-	benchmark/TypedExpressionSolverDepth1Eig.cpp
-	benchmark/AslamExpressionSolver.cpp
-	benchmark/TypedExpressionSolverDepth10Simp.cpp
-	benchmark/TypedExpressionSolverDepth1Simp.cpp
+	benchmark/two_rotations_projection/ProjectionProblem.cpp
+	benchmark/two_rotations_projection/GeneratedExpressionSolver.cpp
+	benchmark/two_rotations_projection/CeresExpressionSolver.cpp
+	benchmark/two_rotations_projection/TypedExpressionSolverDepth10Eig.cpp
+	benchmark/two_rotations_projection/TypedExpressionSolverDepth1Eig.cpp
+	benchmark/two_rotations_projection/AslamExpressionSolver.cpp
+	benchmark/two_rotations_projection/TypedExpressionSolverDepth10Simp.cpp
+	benchmark/two_rotations_projection/TypedExpressionSolverDepth1Simp.cpp
 )
-target_link_libraries(benchmarker dl)
-#set_target_properties(benchmarker PROPERTIES COMPILE_FLAGS "-p")
+target_link_libraries(benchmarker_two_rotations_projection dl)
+#set_target_properties(benchmarker_two_rotations_projection PROPERTIES COMPILE_FLAGS "-p")
 
 #add_executable(test_exp src/test.cpp 
 #     src/Expressions.cpp
@@ -80,18 +80,18 @@ rosbuild_add_gtest(test_requirements
 # rosbuild_add_executable(prepare_eigen_problem src/prepare_eigen_problem.cpp)
 # target_link_libraries(normalized_cut lapack blas)
 
-FIND_PACKAGE(Ceres REQUIRED)
-INCLUDE_DIRECTORIES(${CERES_INCLUDES} )
+#FIND_PACKAGE(Ceres REQUIRED)
+#INCLUDE_DIRECTORIES(${CERES_INCLUDES} )
 
 # set(CGNUPLOT $ENV{HOME}/sources/gtl/vsv_stack/cgnuplot)
 # INCLUDE_DIRECTORIES(${CGNUPLOT}/include)
 # LINK_DIRECTORIES(${CGNUPLOT}/lib)
 # SET(CGNUPLOT_LIBRARIES cgnuplot)
 
-add_executable(optimise_rotations
-    seals/optimise_rotations.cpp
-    seals/rotation_errors.cpp
-    seals/states.cpp
-)
-target_link_libraries(optimise_rotations ${CERES_LIBRARIES} ${CGNUPLOT_LIBRARIES})
+#add_executable(optimise_rotations
+#    seals/optimise_rotations.cpp
+#    seals/rotation_errors.cpp
+#    seals/states.cpp
+#)
+#target_link_libraries(optimise_rotations ${CERES_LIBRARIES} ${CGNUPLOT_LIBRARIES})
 
