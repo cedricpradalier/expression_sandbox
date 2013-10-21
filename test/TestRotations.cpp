@@ -8,9 +8,8 @@
 
 #include <type_traits>
 #include <gtest/gtest.h>
+//#include <typed_expressions/EigenLinalg.hpp>
 #include "TestTools.hpp"
-
-#include <typed_expressions/EuclideanSpace.hpp>
 
 using namespace tex;
 
@@ -20,12 +19,13 @@ TEST(Rotation, Basics3d){
   PRINT_EXP(y);
   PRINT_EXP(z);
 
-  EuclideanSpace<3>::Rotation i({1.0});
-  EuclideanSpace<3>::Rotation j{0.0, 1.0};
-  EuclideanSpace<3>::Rotation k{0.0, 0.0, 1.0};
-  EuclideanSpace<3>::Rotation minusId({0., 0., 0., -1});
-  EuclideanSpace<3>::Rotation id({0., 0., 0., 1});
-  EuclideanSpace<3>::Rotation halfI({sqrt(0.5), 0., 0., sqrt(0.5)});
+  EuclideanSpace<3>::Rotation i(UnitQuaternion::getI());
+  EuclideanSpace<3>::Rotation j(UnitQuaternion::getJ());
+  EuclideanSpace<3>::Rotation k(UnitQuaternion::getK());
+  EuclideanSpace<3>::Rotation id(UnitQuaternion::getIdentity());
+
+  EuclideanSpace<3>::Rotation minusId((-UnitQuaternion::getIdentity()).eval());
+  EuclideanSpace<3>::Rotation halfI(((UnitQuaternion::getIdentity().getValue() + UnitQuaternion::getI().getValue()) * sqrt(0.5)));
 
   auto ij = i * j;
   auto ii = i * i;
@@ -34,6 +34,9 @@ TEST(Rotation, Basics3d){
   PRINT_EXP(ii);
   PRINT_EXP(iiii);
   PRINT_EXP(ij);
+  PRINT_EXP(minusId);
+  PRINT_EXP((-x));
+  PRINT_EXP(j.rotate(x));
 
   ASSERT_PRED3(isNear<3>, (-x).eval(), j.rotate(x).eval(), eps);
   ASSERT_PRED3(isNear<3>, (-y).eval(), k.rotate(y).eval(), eps);

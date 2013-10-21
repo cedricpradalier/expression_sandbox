@@ -5,16 +5,19 @@
  *      Author: hannes
  */
 
+
 #ifndef SIMPLELINALG_HPP_
 #define SIMPLELINALG_HPP_
 #ifndef EXP_LINALG
+
 #define EXP_LINALG
+#define EXP_SIMPLE_LINALG
 
-namespace linalg {
+#include <type_traits>
 
+namespace simple_linalg {
 template <typename DERIVED>
 class MatrixBase {
-
 };
 
 namespace internal {
@@ -75,24 +78,44 @@ struct Storage : private ArrayOrPointer<Scalar_, Rows_ * Cols_, IsMap> {
 template <typename Scalar_, size_t Rows_, size_t Cols_, bool IsMap = false>
 class Matrix : public internal::Storage<Scalar_, Rows_, Cols_, IsMap>, public MatrixBase< Matrix<Scalar_, Rows_, Cols_, IsMap> > {
   typedef internal::Storage<Scalar_, Rows_, Cols_, IsMap> Storage;
+  typedef Matrix<Scalar_, Rows_, Cols_ , false> NonMapMatrix;
  public:
   typedef Scalar_ Scalar;
   constexpr static size_t Rows = Rows_, Cols = Cols_;
   constexpr static size_t Size = Rows * Cols;
 
-  Matrix(Scalar * p, size_t stride) : Storage(p, stride){
+
+  Matrix(Scalar * p, size_t stride) : Storage(p, stride){}
+
+  Matrix(): Matrix(Scalar(0)){}
+
+  Matrix(Scalar v){
+    setAll(v);
   }
 
-  Matrix(): Matrix(Scalar(0)){
-  }
-  Matrix(Scalar v){
+  void setAll(Scalar v){
     for(size_t i = 0; i < Size; i ++) { Storage::accessEntry(i) = v; }
   }
+
+  void setZero(){
+    setAll(Scalar(0));
+  }
+
+  void setOne(){
+    setAll(Scalar(1));
+  }
+
   inline Matrix(std::function<Scalar (size_t i, size_t j)> getEntry) {
     for(size_t i = 0; i < Rows; i++) {
        for(size_t j = 0; j < Cols; j++) {
          Storage::accessEntry(i, j) = getEntry(i, j);
        }
+    }
+  }
+
+  inline Matrix(std::function<Scalar (size_t i)> getEntry) {
+    for(size_t i = 0; i < Size; i++) {
+     (*this)[i] = getEntry(i);
     }
   }
 
@@ -124,13 +147,13 @@ class Matrix : public internal::Storage<Scalar_, Rows_, Cols_, IsMap>, public Ma
 
 
   template <bool OtherIsMap>
-  Matrix operator + (const Matrix<Scalar, Rows, Cols, OtherIsMap> & other) const {
-    return Matrix([&other, this](size_t i, size_t j) { return (*this)(i, j) + other(i, j); });
+  NonMapMatrix operator + (const Matrix<Scalar, Rows, Cols, OtherIsMap> & other) const {
+    return NonMapMatrix([&other, this](size_t i, size_t j) { return (*this)(i, j) + other(i, j); });
   }
 
   template <size_t OtherCols, bool OtherIsMap>
-  Matrix operator * (const Matrix<Scalar, Cols, OtherCols, OtherIsMap> & other) const {
-    return Matrix([&other, this](size_t i, size_t j) {
+  NonMapMatrix operator * (const Matrix<Scalar, Cols, OtherCols, OtherIsMap> & other) const {
+    return NonMapMatrix([&other, this](size_t i, size_t j) {
       Scalar r = 0;
       for(size_t k = 0; k < Cols; k++){
         r += (*this)(i, k) * other(k, j);
@@ -139,15 +162,36 @@ class Matrix : public internal::Storage<Scalar_, Rows_, Cols_, IsMap>, public Ma
     });
   }
 
-  Matrix operator * (Scalar s) const {
-    return Matrix([s, this](size_t i, size_t j) {
+  template <bool OtherIsMap>
+  inline NonMapMatrix cross (const Matrix<Scalar, 3, 1, OtherIsMap> & other) const {
+    static_assert(Rows == 3 && Cols == 1 && (int)OtherIsMap != -1, "cross is only defined when Rows = 3 and Cols = 1");
+    return NonMapMatrix([&other, this](size_t i, size_t j) {
+      if(j != 0) throw std::runtime_error("index out of bounds");
+      switch(i){
+        case 0:
+          return (*this)[1] * other[2] - (*this)[2] * other[1];
+        case 1:
+          return (*this)[2] * other[0] - (*this)[0] * other[2];
+        case 2:
+          return (*this)[0] * other[1] - (*this)[1] * other[0];
+        default:
+          throw std::runtime_error("index out of bounds");
+      }
+    });
+  }
+
+  inline NonMapMatrix operator * (Scalar s) const {
+    return NonMapMatrix([s, this](size_t i, size_t j) {
       return (*this)(i, j) * s;
     });
   }
 
+  inline friend NonMapMatrix operator * (Scalar s, const Matrix & m){
+    return m * s;
+  }
 
-  Matrix operator - () const {
-    return Matrix([this](size_t i, size_t j) { return -(*this)(i, j); });
+  NonMapMatrix operator - () const {
+    return NonMapMatrix([this](size_t i, size_t j) { return -(*this)(i, j); });
   }
 
   void modify(std::function<void(Scalar & s)> modifier) {
@@ -192,6 +236,7 @@ class Matrix : public internal::Storage<Scalar_, Rows_, Cols_, IsMap>, public Ma
     }
     return out << "]";
   }
+
   /*
   template <size_t rows, size_t cols>
   inline Matrix<Scalar, rows, cols> copyBlock(size_t startI, size_t startJ) const {
@@ -201,7 +246,7 @@ class Matrix : public internal::Storage<Scalar_, Rows_, Cols_, IsMap>, public Ma
 
   template <size_t rows, size_t cols>
   inline const Matrix<Scalar, rows, cols, true> block(size_t startI, size_t startJ) const {
-    return Matrix<Scalar, rows, cols, true>(&const_cast<Matrix&>(*this)(startI, startJ), startI);
+    return Matrix<Scalar, rows, cols, true>(&const_cast<Matrix&>(*this)(startI, startJ), startJ);
   }
 
   template <size_t rows, size_t cols>
@@ -229,14 +274,32 @@ using Vector = Matrix<double, Dim_, 1>;
 
 typedef size_t MatrixSize;
 
+
 template<typename T>
-std::function<double(MatrixSize i, MatrixSize j)> asMatrixConvertible(const T & t) {
-  return t;
+struct MatrixConvertible {
+  typedef const T & type;
+  static inline const T & asMatrixConvertible(const T & t){
+    return t;
+  }
+};
+
+template<typename T>
+inline typename MatrixConvertible<T>::type asMatrixConvertible(const T & t) {
+  return MatrixConvertible<T>::asMatrixConvertible(t);
 }
+
+
+template<>
+struct MatrixConvertible<std::initializer_list<double>> {
+  typedef std::initializer_list<double> type;
+  static inline type asMatrixConvertible(std::initializer_list<double> t, MatrixSize size = -1){
+    return t;
+  }
+};
 
 }
 
-using namespace linalg;
+namespace linalg = simple_linalg;
 
 #endif
 #endif /* SIMPLELINALG_HPP_ */

@@ -5,17 +5,35 @@
  *      Author: hannes
  */
 
-#include "TypedExpressionSolver.hpp"
-#include "typed_expressions/UnitQuaternions.hpp"
+#include <typed_expressions/UnitQuaternions.hpp>
+#include <typed_expressions/SimpleLinalgWithEigenAdapter.hpp>
 
 namespace projection_problem {
 
+#ifndef SOLVER
+#define SOLVER solver
+#endif
+
 namespace SOLVER {
+
+class TypedExpressionSolver : public benchmark::ProblemSolver<ProjectionProblem>{
+ public:
+  TypedExpressionSolver();
+  typedef ProblemSolver<ProjectionProblem> Base;
+  typedef ProjectionProblem Problem;
+  typedef typename Base::InstancePtr InstancePtr;
+
+  virtual std::string getName() const;
+
+  virtual InstancePtr createNewInstance(const ProjectionProblem::ConstInput & constInput) const;
+
+  virtual ~TypedExpressionSolver() {};
+};
+
 
 #define SOLVER_NAME__(X) #X
 #define SOLVER_NAME_(X) SOLVER_NAME__(X)
 #define SOLVER_NAME SOLVER_NAME_(SOLVER)
-
 std::string TypedExpressionSolver::getName() const {
   return std::string("TypedExpressionSolver(") + SOLVER_NAME +  ")";
 }
@@ -24,23 +42,45 @@ auto TypedExpressionSolver::createNewInstance(const ProjectionProblem::ConstInpu
   using namespace tex;
   struct Instance : public TypedExpressionSolver::Instance {
 
-    Variable<UnitQuaternion> qC12, qC23;
-    Variable<EuclideanPoint<3>> p3;
+    ExtVariable<UnitQuaternion> qC12, qC23;
+    ExtVariable<EuclideanPoint<3>> p3;
 //    VExp<EuclideanPoint<3> > exp;
-    decltype((inverse(Variable<UnitQuaternion>()) * Variable<UnitQuaternion>()).rotate(Variable<EuclideanPoint<3>>()) * Scalar<double>(0.5)) exp;
+//    decltype((inverse(ExtVariable<UnitQuaternion>()) * ExtVariable<UnitQuaternion>()).rotate(ExtVariable<EuclideanPoint<3>>()) * Scalar<double>(0.5)) exp;
+    decltype(inverse(ExtVariable<UnitQuaternion>()).rotate(ExtVariable<UnitQuaternion>().rotate(ExtVariable<EuclideanPoint<3>>())) * Scalar<double>(0.5)) exp;
 
     Instance(const ProjectionProblem::ConstInput& constInput) :
-      exp((qC12.inverse() * qC23).rotate(p3) * Scalar<double>(0.5))
+      exp(qC12.inverse().rotate(qC23.rotate(p3)) * Scalar<double>(0.5))
     {
     }
 
-    virtual void solveInto(const TypedExpressionSolver::Problem::Input & input, TypedExpressionSolver::Problem::Output & output) {
-      qC12 = UnitQuaternion(asMatrixConvertible(input.qC12));
-      qC23 = UnitQuaternion(asMatrixConvertible(input.qC23));
-      p3 = EuclideanPoint<3>(asMatrixConvertible(input.p3));
+    virtual void solveInto(const TypedExpressionSolver::Problem::Input & input, TypedExpressionSolver::Problem::Output & output, const EvalVariants v) override {
+      qC12.setStorage(reinterpret_cast<const UnitQuaternion*>(&input.qC12));
+      qC23.setStorage(reinterpret_cast<const UnitQuaternion*>(&input.qC23));
+      p3.setStorage(reinterpret_cast<const EuclideanPoint<3>*>(&input.p3));
 
-      auto v = exp.eval();
-      for(int i : {0, 1}) output.xy[i] = v[i];
+      auto pRotated = exp.eval().getValue();
+
+      switch(v){
+        case EvalVariants::Eval :{
+          for(int i : {0, 1}) output.xy[i] = pRotated[i];
+        }
+        break;
+        case EvalVariants::EvalJacobian:
+        {
+          UnitQuaternion qC21(inverse(qC12).eval());
+
+          const static EuclideanPoint<3> E[3] = {{1., 0., 0.}, {0., 1., 0.}, {0., 0., 1.}};
+
+          for (int i : {0, 1, 2}) {
+            auto & v = E[i];
+            p3.setStorage(&v);
+            output.jP3.template block<2, 1>(0, i) = toEigen(exp.eval().template block<2, 1>(0, 0));
+            output.jPhi12.template block<2, 1>(0, i) = toEigen(pRotated.cross(qC21.rotate(v).eval().getValue()).template block<2, 1>(0, 0) * 2);
+            output.jPhi23.template block<2, 1>(0, i) = toEigen(-pRotated.cross(qC21.rotate(v).eval().getValue()).template block<2, 1>(0, 0) * 2);
+          }
+        }
+        break;
+      }
     }
   };
 

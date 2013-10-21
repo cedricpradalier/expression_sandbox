@@ -33,9 +33,11 @@ template <typename Problem>
 auto DummySolver<Problem>::createNewInstance(const typename Problem::ConstInput & constInput) const -> InstancePtr
 {
   struct Instance : public Base::Instance {
-    virtual void solveInto(const typename Problem::Input & input, typename Problem::Output & output) {
+    virtual void solveInto(const typename Problem::Input & input, typename Problem::Output & output, const typename Problem::Variant v) override {
     }
+    virtual ~Instance(){}
   };
+
 
   return InstancePtr(new Instance());
 }

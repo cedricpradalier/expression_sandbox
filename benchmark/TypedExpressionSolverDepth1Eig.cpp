@@ -5,10 +5,9 @@
  *      Author: hannes
  */
 
+#include "TypedExpressionSolver.hpp"
 #include "typed_expressions/EigenLinalg.hpp"
 
 #define SOLVER eigLinTDepth1
 #define TYPED_EXP_MAX_DEPTH 1
 #include "TypedExpressionSolverImpl.hpp"
-
-

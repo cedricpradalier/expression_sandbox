@@ -18,7 +18,7 @@ class ProblemSolver {
 public:
   class Instance {
    public:
-    virtual void solveInto(const typename Problem::Input & input, typename Problem::Output & output) = 0;
+    virtual void solveInto(const typename Problem::Input & input, typename Problem::Output & output, const typename Problem::Variant v) = 0;
     virtual ~Instance(){}
   };
   typedef std::unique_ptr<Instance> InstancePtr;

@@ -6,6 +6,8 @@
  */
 
 
+#include "TypedExpressionSolver.hpp"
 #include "typed_expressions/EigenLinalg.hpp"
+
 #define SOLVER eigLinTDepth10
 #include "TypedExpressionSolverImpl.hpp"

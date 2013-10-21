@@ -5,6 +5,7 @@
  *      Author: hannes
  */
 
+#include "TypedExpressionSolver.hpp"
 
 #define SOLVER simpLinTDepth10
 #include "TypedExpressionSolverImpl.hpp"

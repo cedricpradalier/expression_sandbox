@@ -55,6 +55,7 @@ rosbuild_add_executable(benchmarker
 	benchmark/malloc_count.c
 	benchmark/Benchmarker.cpp
 	benchmark/ProjectionProblem.cpp
+	benchmark/CeresExpressionSolver.cpp
 	benchmark/TypedExpressionSolverDepth10Eig.cpp
 	benchmark/TypedExpressionSolverDepth1Eig.cpp
 	benchmark/AslamExpressionSolver.cpp

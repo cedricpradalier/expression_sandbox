@@ -379,7 +379,7 @@ class Neg : public UnOpBase<A, Space_, Neg<A, Space_> > {
 
   friend
   std::ostream & operator << (std::ostream & out, const Neg & op) {
-    return out << "(" << op.getA() << ")^-1";
+    return out << "-(" << op.getA() << ")";
   }
 };
 
@@ -477,6 +477,44 @@ template <typename ExpType, int Level>
 struct OperandStorage<Variable<ExpType, true>, Level> {
   typedef ExpPtr<Variable<ExpType, true>, std::shared_ptr<const Variable<ExpType, true>>, true> StorageType;
   typedef Variable<ExpType, true> EvaluableType;
+};
+
+
+template <typename Space>
+class ExtVariable : public OpMemberBase<typename get_space<Space>::type, ExtVariable<Space> > {
+ public:
+  constexpr static int Level = internal::getLevel<Space>();
+
+  inline ExtVariable(const Space * ps = nullptr) : s(ps) {}
+
+  inline Space eval() const {
+    return s->eval();
+  }
+
+  inline void setStorage(const Space * ps){
+    s = ps;
+  }
+
+  friend std::ostream & operator << (std::ostream & out, const ExtVariable & namedExp) {
+    out << "$" << (*namedExp.s);
+    return out;
+  }
+ private:
+  const Space *s; // of course it would be nicer to have this as a private base, but the compiler then yields ambiguous member access errors, when OpMemberBase has identical member functions... (compiler bug?)
+};
+
+namespace internal {
+  template <typename Space>
+  struct get_space<ExtVariable<Space>>{
+   public:
+    typedef Space type;
+  };
+}
+
+template <typename ExpType, int Level>
+struct OperandStorage<ExtVariable<ExpType>, Level> {
+  typedef ExpPtr<ExtVariable<ExpType>, const ExtVariable<ExpType> *, false> StorageType;
+  typedef ExtVariable<ExpType> EvaluableType;
 };
 
 #define SUPPORTS_VARIABLES

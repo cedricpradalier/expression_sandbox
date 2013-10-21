@@ -13,12 +13,14 @@
 #include "EuclideanPoint.hpp"
 
 namespace quat_calc {
+using namespace linalg;
+
 enum class QuaternionMode {
   FIRST_IS_REAL_AND_TRADITIONAL_MULT_ORDER = 0,
   FIRST_IS_REAL_AND_OPPOSITE_MULT_ORDER = 1,
   LAST_IS_REAL_AND_TRADITIONAL_MULT_ORDER = 2,
   LAST_IS_REAL_AND_OPPOSITE_MULT_ORDER = 3,
-}constexpr DefaultQuaternionMode = QuaternionMode::LAST_IS_REAL_AND_TRADITIONAL_MULT_ORDER;
+}constexpr DefaultQuaternionMode = QuaternionMode::FIRST_IS_REAL_AND_TRADITIONAL_MULT_ORDER;
 
 enum class UnitQuaternionGeometry {
   LEFT_TRANSLATED,
@@ -53,7 +55,7 @@ inline constexpr int getKIndex(const QuaternionMode mode) {
 }
 
 template<typename TScalar, enum QuaternionMode EMode = DefaultQuaternionMode>
-struct EigenQuaternionCalculator {
+struct QuaternionCalculator {
   typedef Vector<4> vector_t;
   typedef Vector<3> pure_imag_vector_t;
   typedef Vector<3> lie_algebra_vector_t;
@@ -67,6 +69,8 @@ struct EigenQuaternionCalculator {
     JPureIndex = 1,
     KPureIndex = 2
   };
+
+
 
   inline static vector_t getIdentity() {
     return isRealFirst(EMode) ? vector_t(1, 0, 0, 0) : vector_t(0, 0, 0, 1);
@@ -97,6 +101,14 @@ struct EigenQuaternionCalculator {
     res[KIndex] = a[IPureIndex] * b[JIndex] - a[JPureIndex] * b[IIndex] + a[KPureIndex] * b[RIndex];
     res[RIndex] = -a[JPureIndex] * b[JIndex] - a[KPureIndex] * b[KIndex] - a[IPureIndex] * b[IIndex];
   }
+
+  inline static void quatMultTraditionalInto(const pure_imag_vector_t & a, const pure_imag_vector_t & b, vector_t & res) {
+    res[IIndex] = + a[JPureIndex] * b[KPureIndex] - a[KPureIndex] * b[JPureIndex];
+    res[JIndex] = a[KPureIndex] * b[IPureIndex] - a[IPureIndex] * b[KPureIndex];
+    res[KIndex] = a[IPureIndex] * b[JPureIndex] - a[JPureIndex] * b[IPureIndex];
+    res[RIndex] = -a[JPureIndex] * b[JPureIndex] - a[KPureIndex] * b[KPureIndex] - a[IPureIndex] * b[IPureIndex];
+  }
+
 
   inline static void quatMultTraditionalInto(const vector_t & a, const pure_imag_vector_t & b, vector_t & res) {
     res[IIndex] = +a[JIndex] * b[KPureIndex] - a[KIndex] * b[JPureIndex] + a[RIndex] * b[IPureIndex];
@@ -147,19 +159,27 @@ struct EigenQuaternionCalculator {
 
   template<enum QuaternionMode EOtherMode, int ICols = 1, typename DERIVED_MATRIX>
   inline static linalg::Matrix<double, 4, ICols> convertFromOtherMode(const linalg::MatrixBase<DERIVED_MATRIX > & v){
-    return EigenQuaternionCalculator<TScalar, EOtherMode>::template convertToOtherMode<EMode, ICols>(v);
+    return QuaternionCalculator<TScalar, EOtherMode>::template convertToOtherMode<EMode, ICols>(v);
   }
 
+  template <int index>
+  static inline vector_t clacBasisVector(){
+    vector_t ret;
+    ret.setZero();
+    ret[isRealFirst(EMode) ? index : (index + 3) % 4] = typename vector_t::Scalar(1);
+    return ret;
+  }
 };
 }
 }
 
 
 namespace TEX_NAMESPACE {
+using namespace linalg;
 class UnitQuaternion : public EuclideanPoint<4> {
  private:
-  typedef quat_calc::internal::EigenQuaternionCalculator<double> Calc;
  public:
+  typedef quat_calc::internal::QuaternionCalculator<double> Calc;
   typedef EuclideanPoint<4> Base;
 
   const UnitQuaternion & eval() const { // TODO make this function unnecessary
@@ -199,23 +219,55 @@ class UnitQuaternion : public EuclideanPoint<4> {
   }
 
   inline EuclideanPoint<3> evalRotate(const EuclideanPoint<3> & other) const{
-//TODO reactivate optimized code here, when comparing to ceres
 //    EuclideanPoint<3> ret;
 //    Calc::quatMultInto(Calc::quatMult(getValue(), other.getValue()), Calc::conjugate(getValue()), ret.getValue());
-//    EuclideanPoint<3> ret;
 //    return ret;
-    return Calc::getImagPart(Calc::quatMult(Calc::quatMult(getValue(), other.getValue()), Calc::conjugate(getValue())));
+
+
+    /* Identify v with the pure imaginary quaternion given by other.
+     * We simplify then the pure imaginary quaternion. Let ~= denote "equal imaginary part"
+     *   q v conj(q)
+     * = (q_R + q_I) v (q_R - q_I)
+     * = q_R^2 v - q_R v q_I + q_I v q_R - q_I v q_I
+     * (importing R^3 cross and dot product to pure imaginary quaternions : a * b = -<a, b> + a x b ~= a x b)
+     *~= q_R^2 v - 2 q_R (v x q_I) - q_I (-<v, q_I> + v x q_I)
+     *~= q_R^2 v - 2 q_R (v x q_I) + <v, q_I>q_I - q_I x (v x q_I)
+     * = q_R^2 v - 2 q_R (v x q_I) + <v, q_I>q_I - (<q_I, q_I>v - <q_I, v>q_I)
+     * = (q_R^2 - <q_I, q_I>)v - 2<v, q_I>q_I + 2 q_R (v x q_I)
+     */
+    auto & q = getValue();
+    auto & q_R = q[Calc::RIndex];
+    auto q_I = Calc::getImagPart(q);
+    auto & v = other.getValue();
+    return (q_R * q_R - q_I.dot(q_I)) * v + (2 * v.dot(q_I)) * q_I + (-2 * q_R) * (v.cross(q_I));
+
+
+//    EuclideanPoint<3> result;
+//    typedef double T;
+//    auto & q = getValue();
+//
+//    const T t2 =  q[Calc::RIndex] * q[Calc::IIndex];
+//    const T t3 =  q[Calc::RIndex] * q[Calc::JIndex];
+//    const T t4 =  q[Calc::RIndex] * q[Calc::KIndex];
+//    const T t5 = -q[Calc::IIndex] * q[Calc::IIndex];
+//    const T t6 =  q[Calc::IIndex] * q[Calc::JIndex];
+//    const T t7 =  q[Calc::IIndex] * q[Calc::KIndex];
+//    const T t8 = -q[Calc::JIndex] * q[Calc::JIndex];
+//    const T t9 =  q[Calc::JIndex] * q[Calc::KIndex];
+//    const T t1 = -q[Calc::KIndex] * q[Calc::KIndex];
+//    result[0] = T(2) * ((t8 + t1) * other[0] + (t6 - t4) * other[1] + (t3 + t7) * other[2]) + other[0];  // NOLINT
+//    result[1] = T(2) * ((t4 + t6) * other[0] + (t5 + t1) * other[1] + (t9 - t2) * other[2]) + other[1];  // NOLINT
+//    result[2] = T(2) * ((t7 - t3) * other[0] + (t2 + t9) * other[1] + (t5 + t8) * other[2]) + other[2];  // NOLINT
+//
+//    return result;
   }
 
   inline EuclideanPoint<3> evalRotateDiff(const Vector<3> & thisTangent, const EuclideanPoint<3> & other, const Vector<3> & otherTangent) const{
-//TODO reactivate optimized code here, when comparing to ceres
-//    EuclideanPoint<3> ret;
-//    Calc::quatMultInto(Calc::quatMult(getValue(), other.getValue()), Calc::conjugate(getValue()), ret.getValue());
-//    EuclideanPoint<3> ret;
-//    return ret;
-    return Calc::getImagPart(Calc::quatMult(Calc::quatMult(getValue(), other.getValue()), Calc::conjugate(getValue())));
+    return
+        Calc::getImagPart(Calc::quatMult(Calc::quatMult(getValue(), other.getValue()), Calc::conjugate(getValue()))) +
+        Calc::getImagPart(Calc::quatMult(Calc::quatMult(getValue(), other.getValue()), Calc::conjugate(getValue())))
+    ;
   }
-
 
   template <typename Ret = Rotate<UnitQuaternion, EuclideanPoint<3> > >
   inline typename Ret::App rotate(const EuclideanPoint<3> & other) const{
@@ -237,8 +289,24 @@ class UnitQuaternion : public EuclideanPoint<4> {
   std::ostream & operator << (std::ostream & out, const UnitQuaternion & op) {
     return out << "UnitQuat" << "(" << static_cast<const Base&>(op) << ")";
   }
-};
 
+  static const UnitQuaternion & getIdentity(){
+    const static UnitQuaternion Identity(UnitQuaternion::Calc::clacBasisVector<0>());
+    return Identity;
+  }
+  static const UnitQuaternion & getI(){
+    const static UnitQuaternion I(UnitQuaternion::Calc::clacBasisVector<1>());
+    return I;
+  }
+  static const UnitQuaternion & getJ(){
+    const static UnitQuaternion J(UnitQuaternion::Calc::clacBasisVector<2>());
+    return J;
+  }
+  static const UnitQuaternion & getK(){
+    const static UnitQuaternion K(UnitQuaternion::Calc::clacBasisVector<3>());
+    return K;
+  }
+};
 
 template <typename DERIVED>
 struct OpMemberBase<UnitQuaternion, DERIVED> {

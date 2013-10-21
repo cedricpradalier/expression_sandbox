@@ -35,12 +35,21 @@ struct Input {
   void setRandom();
 };
 
-class ProjectionProblem : public benchmark::Problem<ConstInput, Input, Output, ProjectionProblem>{
+enum class EvalVariants {
+  Eval,
+  EvalJacobian
+
+};
+std::ostream & operator << (std::ostream & out, const EvalVariants v);
+
+
+class ProjectionProblem : public benchmark::Problem<ConstInput, Input, Output, ProjectionProblem, EvalVariants>{
 public:
-  typedef benchmark::Problem<ConstInput, Input, Output, ProjectionProblem> Base;
+  typedef benchmark::Problem<ConstInput, Input, Output, ProjectionProblem, EvalVariants> Base;
   typedef typename Base::InstancePtr InstancePtr;
   virtual InstancePtr createInstance() const;
   virtual ~ProjectionProblem() {}
+  virtual std::vector<Variant> getVariants() const override { return {EvalVariants::Eval, EvalVariants::EvalJacobian}; };
  private:
   static void calcSolutionInto(const Input & input, Output & output);
 };

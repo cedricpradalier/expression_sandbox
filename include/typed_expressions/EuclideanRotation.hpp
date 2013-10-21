@@ -135,7 +135,7 @@ class EuclideanRotation<3> {
     return *this;
   }
 
-  EuclideanRotation(std::initializer_list<double> q) : q_(q){}
+  EuclideanRotation(std::initializer_list<double> q) : q_(asMatrixConvertible(q)){}
   template <typename T>
   EuclideanRotation(const T & q) : q_(q){}
 

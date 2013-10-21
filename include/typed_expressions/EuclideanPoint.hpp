@@ -19,6 +19,7 @@
 #include <cmath>
 
 namespace TEX_NAMESPACE {
+using namespace linalg;
 
 template <typename PrimScalar_>
 class Scalar {
@@ -96,7 +97,7 @@ class EuclideanPoint : public Vector<Dim_> {
 
   EuclideanPoint() = default;
 
-  EuclideanPoint(std::initializer_list<double> entries) : Vector<Dim_>(entries) {
+  EuclideanPoint(std::initializer_list<double> entries) : Vector<Dim_>(MatrixConvertible<std::initializer_list<double>>::asMatrixConvertible(entries, Dim_)) {
   }
   template <typename Value>
   EuclideanPoint(const Value & v) : Vector<Dim_>(v) {

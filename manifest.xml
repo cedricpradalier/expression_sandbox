@@ -13,7 +13,7 @@
   <!-- <depend package="eigen"/> -->
   <depend package="aslam_backend"/>
   <depend package="aslam_backend_expressions"/>
+  <depend package="ceres"/>
 
 </package>
-
 
