@@ -77,3 +77,19 @@ rosbuild_add_gtest(test_requirements
 
 # rosbuild_add_executable(prepare_eigen_problem src/prepare_eigen_problem.cpp)
 # target_link_libraries(normalized_cut lapack blas)
+
+FIND_PACKAGE(Ceres REQUIRED)
+INCLUDE_DIRECTORIES(${CERES_INCLUDES} )
+
+# set(CGNUPLOT $ENV{HOME}/sources/gtl/vsv_stack/cgnuplot)
+# INCLUDE_DIRECTORIES(${CGNUPLOT}/include)
+# LINK_DIRECTORIES(${CGNUPLOT}/lib)
+# SET(CGNUPLOT_LIBRARIES cgnuplot)
+
+add_executable(optimise_rotations
+    seals/optimise_rotations.cpp
+    seals/rotation_errors.cpp
+    seals/states.cpp
+)
+target_link_libraries(optimise_rotations ${CERES_LIBRARIES} ${CGNUPLOT_LIBRARIES})
+
