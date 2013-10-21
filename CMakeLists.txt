@@ -7,8 +7,8 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-#set(ROS_BUILD_TYPE Relese)
-set(ROS_BUILD_TYPE RelWithDebInfo)
+set(ROS_BUILD_TYPE Release)
+#set(ROS_BUILD_TYPE RelWithDebInfo)
 #set(ROS_BUILD_TYPE Debug)
 
 rosbuild_init()
@@ -55,6 +55,7 @@ rosbuild_add_executable(benchmarker
 	benchmark/malloc_count.c
 	benchmark/Benchmarker.cpp
 	benchmark/ProjectionProblem.cpp
+	benchmark/GeneratedExpressionSolver.cpp
 	benchmark/CeresExpressionSolver.cpp
 	benchmark/TypedExpressionSolverDepth10Eig.cpp
 	benchmark/TypedExpressionSolverDepth1Eig.cpp
