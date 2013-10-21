@@ -51,8 +51,9 @@ auto ProjectionProblem::createInstance() const -> InstancePtr {
           jP3ErrorNorm = (solution.jP3 - output.jP3).norm();
         break;
       }
-#ifdef DEBUG
-      std::cout << "**************=" << std::endl;
+#ifndef NDEBUG
+
+      std::cout << "**************" << std::endl;
       std::cout << "xyNorm=" << std::endl << xyNorm << std::endl;
       std::cout << "jPhi12ErrorNorm=" << std::endl << jPhi12ErrorNorm << std::endl;
       std::cout << "jPhi23ErrorNorm=" << std::endl << jPhi23ErrorNorm << std::endl;
@@ -61,6 +62,8 @@ auto ProjectionProblem::createInstance() const -> InstancePtr {
       std::cout << "output.jPhi12=" << std::endl << output.jPhi12 << std::endl;
       std::cout << "solution.jPhi23=" << std::endl << solution.jPhi23 << std::endl;
       std::cout << "output.jPhi23=" << std::endl << output.jPhi23 << std::endl;
+      std::cout << "solution.jP3=" << std::endl << solution.jP3 << std::endl;
+      std::cout << "output.jP3=" << std::endl << output.jP3 << std::endl;
 #endif
       return
           xyNorm +
