@@ -58,5 +58,5 @@ def createEt():
 
     Et.write_header(classname="PaulsGeneratedErrorInTangentSpace",path="generated")
 
-#createE()
+createE()
 createEt()
