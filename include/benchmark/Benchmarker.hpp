@@ -25,7 +25,6 @@ namespace benchmark {
 
 class StopWatch {
  public:
-  //TODO measure CPU time
   struct duration {
     typedef decltype(std::chrono::steady_clock::now() - std::chrono::steady_clock::now()) durationType;
     decltype(std::chrono::steady_clock::now() - std::chrono::steady_clock::now()) duration;
@@ -59,8 +58,9 @@ class Benchmark {
   class Instance {
    public:
     virtual void run(int argc, const char ** argv, int numberOfProblemInstancesToSolve, int numberOfRepetitions) = 0;
-    virtual void printHeader(std::ostream& out, const int nameWidth, const std::string& sep) const = 0;
-    virtual void printStat(std::ostream& out, const int nameWidth, const std::string& sep) const = 0;
+    virtual void printHeader(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors = true) const = 0;
+    virtual void printStat(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors = true) const = 0;
+    virtual std::string getProblemName() const = 0;
     virtual ~Instance(){}
   };
 
@@ -84,9 +84,10 @@ class BenchmarkInstance : public Benchmark::Instance {
 
   BenchmarkInstance(bool verbose = false) : verbose(verbose) {}
 
-  void run(int argc, const char ** argv, int numberOfProblemInstancesToSolve, int numberOfRepetitions);
-  void printHeader(std::ostream& out, const int nameWidth, const std::string& sep) const;
-  void printStat(std::ostream& out, const int nameWidth, const std::string& sep) const;
+  virtual void run(int argc, const char ** argv, int numberOfProblemInstancesToSolve, int numberOfRepetitions);
+  virtual void printHeader(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors) const;
+  virtual void printStat(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors) const;
+  virtual std::string getProblemName() const { return p.getName(); };
 
  private:
   typedef typename Problem::Output Output;
@@ -109,27 +110,31 @@ class BenchmarkInstance : public Benchmark::Instance {
       out << "used memory = " << ((double)stat.usedMemory) << " byte/instance, ";
       return out;
     }
-    void outList(std::ostream & out, const std::string sep) const {
+    void outList(std::ostream & out, const std::string sep, bool showErrors) const {
       out
           << durationPreparing.duration << sep
           << usedMemory << sep;
       for(auto & s : solvingStats){
         out
-          << s.durationSolving.duration << sep
-          << s.mean << sep
-          << s.svar << sep;
+          << s.durationSolving.duration << sep;
+        if(showErrors)
+          out
+            << s.mean << sep
+            << s.svar << sep;
       }
     }
-    static void outHeaderList(const Problem &p, std::ostream & out, const std::string sep) {
+    static void outHeaderList(const Problem &p, std::ostream & out, const std::string sep, bool showErrors) {
       out
         << "prepare(s)" << sep
         << "mem(byte/inst)" << sep;
       for(auto v : p.getVariants()){
         out
           << v << ":"
-          << "solve(s)" << sep
-          << "error mean" << sep
-          << "deviation" << sep;
+          << "solve(s)" << sep;
+        if(showErrors)
+          out
+            << "error mean" << sep
+            << "deviation" << sep;
       }
     }
 
@@ -216,17 +221,17 @@ void BenchmarkInstance<Problem_> ::Statistics::SolvingVariantStat::calc() {
 
 
 template<typename Problem_>
-void BenchmarkInstance<Problem_>::printHeader(std::ostream& out, const int nameWidth, const std::string& sep) const {
+void BenchmarkInstance<Problem_>::printHeader(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors) const {
   out << std::setw(nameWidth) << "Name" << sep;
-  Statistics::outHeaderList(p, out, sep);
+  Statistics::outHeaderList(p, out, sep, showErrors);
   out << std::endl;
 }
 
 template<typename Problem_>
-void BenchmarkInstance<Problem_>::printStat(std::ostream& out, const int nameWidth, const std::string& sep) const {
+void BenchmarkInstance<Problem_>::printStat(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors) const {
   for (const SolverData& sd : solverData) {
     out << std::setw(nameWidth) << sd.solver.getName() << sep;
-    sd.stat.outList(out, sep);
+    sd.stat.outList(out, sep, showErrors);
     out << std::endl;
   }
 }
@@ -234,6 +239,16 @@ void BenchmarkInstance<Problem_>::printStat(std::ostream& out, const int nameWid
 template <typename Problem_>
 void BenchmarkInstance<Problem_>::run(int argc, const char ** argv, int numberOfProblemInstancesToSolve, int numberOfRepetitions){
   const std::vector<const Solver*> & solverPtrs = ProblemSolver<Problem>::getSolvers();
+
+  if(numberOfProblemInstancesToSolve <= 0 || numberOfRepetitions <= 0){
+    std::cerr << "no instances to run" << std::endl;
+    return;
+  }
+
+  if(solverPtrs.size() == 0){
+    std::cerr << "no solvers found" << std::endl;
+    return;
+  }
 
   StopWatch stopWatch;
   createSolverData(solverPtrs, numberOfProblemInstancesToSolve);
@@ -273,8 +288,8 @@ void BenchmarkInstance<Problem_>::run(int argc, const char ** argv, int numberOf
 
 template <typename Problem_>
 class ProblemBenchmark : public Benchmark {
-  virtual std::unique_ptr<Instance> create(bool verbose = false) const {
-    return new BenchmarkInstance<Problem_>(verbose);
+  virtual std::unique_ptr<Instance> createInstance(bool verbose) const override {
+    return std::unique_ptr<Instance>(new BenchmarkInstance<Problem_>(verbose));
   }
 };
 

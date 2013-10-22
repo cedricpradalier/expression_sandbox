@@ -32,8 +32,6 @@ class GeneratedExpressionSolver : public benchmark::ProblemSolver<ProjectionProb
 };
 
 
-Eigen::MatrixXd zero = Eigen::MatrixXd::Zero(3, 1);
-
 GeneratedExpressionSolver::InstancePtr GeneratedExpressionSolver::createNewInstance(const ProjectionProblem::ConstInput & constInput) const{
   struct Instance : public GeneratedExpressionSolver::Instance {
 

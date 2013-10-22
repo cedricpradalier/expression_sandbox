@@ -31,12 +31,8 @@ std::ostream & operator << (std::ostream & out, const typename StopWatch::durati
 }
 
 
-
 int main(int argc, const char **argv) {
   using namespace benchmark;
-//  using namespace projection_problem;
-//  typedef ProjectionProblem Problem;
-//  typedef Benchmarker<Problem> Bench;
 
   const int nRuns = argc > 1 ? atoi(argv[1]) : DEFAULT_NRUNS;
   const bool verbose = false;
@@ -57,17 +53,19 @@ int main(int argc, const char **argv) {
     std::ostream & out;
     int nameWidth;
     const char * sep;
+    bool showErrors;
   };
 
   std::filebuf csvBuffer;
   std::ostream csv(&csvBuffer);
   csvBuffer.open("stat.csv", std::ios::out | std::ios::trunc);
-  std::vector<Output> outputs = { {std::cout, 50, "\t"}, {csv, 1, ","} };
+  std::vector<Output> outputs = { {std::cout, 50, "\t", true}, {csv, 1, ",", false} };
 
 
   for(const Benchmark * bp: Benchmark::getBenchmarks()){
     auto b = bp->createInstance(verbose);
-    for(Output & o : outputs) b->printHeader(o.out, o.nameWidth, o.sep);
+    for(Output & o : outputs) o.out << "NEW PROBLEM (" << b->getProblemName() << "):" << std::endl;
+    for(Output & o : outputs) b->printHeader(o.out, o.nameWidth, o.sep, o.showErrors);
 
 
     for(int numberOfRepetitions = 1 ; numberOfRepetitions <= 1000; numberOfRepetitions *= 1000){
@@ -80,7 +78,11 @@ int main(int argc, const char **argv) {
 
       b->run(argc, argv, numberOfProblemInstancesToSolve, numberOfRepetitions);
 
-      for(Output & o : outputs) b->printStat(o.out, o.nameWidth, o.sep);
+      for(Output & o : outputs) {
+        b->printStat(o.out, o.nameWidth, o.sep, o.showErrors);
+        o.out << std::endl;
+      }
+      b = bp->createInstance(verbose);
     }
   }
 }

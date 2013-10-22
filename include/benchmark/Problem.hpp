@@ -21,6 +21,7 @@ public:
   typedef Output_ Output;
   typedef Variant_ Variant;
 
+  Problem(std::string name) : name(name) {}
 
   class Instance {
    public:
@@ -38,6 +39,9 @@ public:
   virtual std::vector<Variant> getVariants() const { return std::vector<Variant>({0}); };
   virtual InstancePtr createInstance() const = 0;
   virtual ~Problem() {};
+  std::string getName() const { return name; }
+private:
+  std::string name;
 };
 
 

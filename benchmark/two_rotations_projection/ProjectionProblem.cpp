@@ -120,8 +120,8 @@ void ProjectionProblem::calcSolutionInto(const Input & input, Output & output) {
   output.jPhi23 = -output.jPhi12;
 }
 
-}
-benchmark::DummySolver<projection_problem::ProjectionProblem> dummySolverInstance;
+::benchmark::DummySolver<ProjectionProblem> dummySolverInstance;
+::benchmark::ProblemBenchmark<ProjectionProblem> benchmark;
 
-typedef benchmark::ProblemSolver<projection_problem::ProjectionProblem> Solver;
-typedef benchmark::ProblemBenchmark<projection_problem::ProjectionProblem> Benchmark;
+}
+

@@ -46,6 +46,7 @@ std::ostream & operator << (std::ostream & out, const EvalVariants v);
 class ProjectionProblem : public benchmark::Problem<ConstInput, Input, Output, ProjectionProblem, EvalVariants>{
 public:
   typedef benchmark::Problem<ConstInput, Input, Output, ProjectionProblem, EvalVariants> Base;
+  ProjectionProblem() : Base("two rotations projection problem") {}
   typedef typename Base::InstancePtr InstancePtr;
   virtual InstancePtr createInstance() const;
   virtual ~ProjectionProblem() {}
