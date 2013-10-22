@@ -82,6 +82,7 @@ class ErrorTerm:
 #include <string>
 #include <math.h>
 #include <Eigen/Core>
+#include <optimize_pow.hpp>
 // This file is auto-generated. Do not modify
 %s
 
