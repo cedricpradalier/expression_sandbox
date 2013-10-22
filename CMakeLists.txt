@@ -44,14 +44,15 @@ include_directories(${EIGEN_INCLUDE_DIR})
 
 add_executable(test_pe src/test_pe.cpp)
 
-add_executable(test_pge benchmark/two_rotations_projection/test_pge.cpp)
+add_executable(test_pge_one benchmark/one_rotation_projection/test_pge.cpp)
+add_executable(test_pge_tow benchmark/two_rotations_projection/test_pge.cpp)
 
 add_executable(TestTypedExpresssions src/TestTypedExpressions.cpp)
 #set_target_properties(TestTypedExpresssions PROPERTIES COMPILE_FLAGS "-fverbose-asm -Wa,-adhln=TestTypedExpresssions.S,")
 
 
 
-rosbuild_add_executable(benchmarker_two_rotations_projection 
+rosbuild_add_executable(benchmarker 
 	benchmark/malloc_count.c
 	benchmark/Benchmarker.cpp
 	benchmark/two_rotations_projection/ProjectionProblem.cpp
@@ -62,9 +63,18 @@ rosbuild_add_executable(benchmarker_two_rotations_projection
 	benchmark/two_rotations_projection/AslamExpressionSolver.cpp
 	benchmark/two_rotations_projection/TypedExpressionSolverDepth10Simp.cpp
 	benchmark/two_rotations_projection/TypedExpressionSolverDepth1Simp.cpp
+	benchmark/one_rotation_projection/ProjectionProblem.cpp
+	benchmark/one_rotation_projection/GeneratedExpressionSolver.cpp
+	benchmark/one_rotation_projection/CeresExpressionSolver.cpp
+	benchmark/one_rotation_projection/TypedExpressionSolverDepth10Eig.cpp
+	benchmark/one_rotation_projection/TypedExpressionSolverDepth1Eig.cpp
+	benchmark/one_rotation_projection/AslamExpressionSolver.cpp
+	benchmark/one_rotation_projection/TypedExpressionSolverDepth10Simp.cpp
+	benchmark/one_rotation_projection/TypedExpressionSolverDepth1Simp.cpp
 )
-target_link_libraries(benchmarker_two_rotations_projection dl)
-#set_target_properties(benchmarker_two_rotations_projection PROPERTIES COMPILE_FLAGS "-p")
+target_link_libraries(benchmarker dl)
+#set_target_properties(benchmarker PROPERTIES COMPILE_FLAGS "-p")
+
 
 #add_executable(test_exp src/test.cpp 
 #     src/Expressions.cpp
