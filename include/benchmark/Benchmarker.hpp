@@ -21,8 +21,6 @@
 
 namespace benchmark {
 
-
-
 class StopWatch {
  public:
   struct duration {
@@ -54,17 +52,18 @@ class Benchmark {
   Benchmark(){ registerBenchmark(*this);}
   virtual ~Benchmark(){}
 
-
   class Instance {
    public:
     virtual void run(int argc, const char ** argv, int numberOfProblemInstancesToSolve, int numberOfRepetitions) = 0;
-    virtual void printHeader(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors = true) const = 0;
-    virtual void printStat(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors = true) const = 0;
-    virtual std::string getProblemName() const = 0;
+    virtual void calcErrorStat() = 0;
+    virtual void printHeader(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors = true, bool relative = false) const = 0;
+    virtual void printStat(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors = true, int refSolverIndex = -1) const = 0;
     virtual ~Instance(){}
   };
 
-  virtual std::unique_ptr<Instance> createInstance(bool verbose = false) const = 0;
+  virtual std::unique_ptr<Instance> createInstance(int maxVariant, bool verbose = false) const = 0;
+  virtual int getSolverIndex(const std::string name) const = 0;
+  virtual std::string getProblemName() const = 0;
 
   static std::vector<const Benchmark*> getBenchmarks() {
     return benchmarkerRegister;
@@ -82,12 +81,12 @@ class BenchmarkInstance : public Benchmark::Instance {
   typedef Problem_ Problem;
   typedef ProblemSolver<Problem> Solver;
 
-  BenchmarkInstance(bool verbose = false) : verbose(verbose) {}
+  BenchmarkInstance(const Problem & p, int maxVariant, bool verbose = false) : p(p), verbose(verbose), maxVariant(maxVariant) {}
 
   virtual void run(int argc, const char ** argv, int numberOfProblemInstancesToSolve, int numberOfRepetitions);
-  virtual void printHeader(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors) const;
-  virtual void printStat(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors) const;
-  virtual std::string getProblemName() const { return p.getName(); };
+  virtual void calcErrorStat();
+  virtual void printHeader(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors, bool relative) const;
+  virtual void printStat(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors, int refSolverIndex) const;
 
  private:
   typedef typename Problem::Output Output;
@@ -110,27 +109,30 @@ class BenchmarkInstance : public Benchmark::Instance {
       out << "used memory = " << ((double)stat.usedMemory) << " byte/instance, ";
       return out;
     }
-    void outList(std::ostream & out, const std::string sep, bool showErrors) const {
-      out
-          << durationPreparing.duration << sep
-          << usedMemory << sep;
+    void outList(std::ostream & out, const std::string & sep, bool showErrors, const Statistics * ref = nullptr) const {
+      outDuration(out, durationPreparing, ref ? &ref->durationPreparing : nullptr); out << sep;
+      out << usedMemory << sep;
+      int i = 0;
       for(auto & s : solvingStats){
-        out
-          << s.durationSolving.duration << sep;
+        outDuration(out, s.durationSolving, ref ? &ref->solvingStats[i].durationSolving : nullptr); out << sep;
         if(showErrors)
           out
             << s.mean << sep
             << s.svar << sep;
+        i++;
       }
     }
-    static void outHeaderList(const Problem &p, std::ostream & out, const std::string sep, bool showErrors) {
+    static void outHeaderList(const Problem &p, int maxVariant, std::ostream & out, const std::string sep, bool showErrors, bool relative) {
+      std::string durationUnit = (relative? "(f)":"(s)");
       out
-        << "prepare(s)" << sep
+        << "prepare" << durationUnit << sep
         << "mem(byte/inst)" << sep;
+      int i = 0;
       for(auto v : p.getVariants()){
+        if(i++ > maxVariant) break;
         out
           << v << ":"
-          << "solve(s)" << sep;
+          << "solve"<< durationUnit << sep;
         if(showErrors)
           out
             << "error mean" << sep
@@ -152,10 +154,16 @@ class BenchmarkInstance : public Benchmark::Instance {
         return solvingStats[(int)v];
     }
    private:
+    static void outDuration(std::ostream & out, const StopWatch::duration & duration, const StopWatch::duration * refDuration = nullptr) {
+      if(refDuration){
+        out << std::chrono::duration_cast<std::chrono::duration<double> >(duration.duration).count() / std::chrono::duration_cast<std::chrono::duration<double> >(refDuration->duration).count();
+      }else{
+        out << duration.duration;
+      }
+    }
     typename StopWatch::duration durationPreparing;
     std::vector<SolvingVariantStat> solvingStats;
     size_t usedMemory;
-
     friend BenchmarkInstance;
   };
 
@@ -167,19 +175,22 @@ class BenchmarkInstance : public Benchmark::Instance {
     Statistics stat;
   };
 
-  void createSolverInstances(const std::vector<ProblemInstancePtr> & inputs) {
+  void createSolverInstances() {
+    if(problemInstances.empty()) return;
+
     for (SolverData& sd : solverData) {
       StopWatch stopWatch;
       size_t beforeMem = malloc_count_current();
-      for (int i = 0, end = inputs.size(); i < end; i++) {
-        sd.instances[i] = sd.solver.createNewInstance(inputs[i]->getConstInput());
+      for (int i = 0, end = problemInstances.size(); i < end; i++) {
+        sd.instances[i] = sd.solver.createNewInstance(problemInstances[i]->getConstInput());
       }
       sd.stat.durationPreparing = stopWatch.read();
-      sd.stat.usedMemory = (malloc_count_current() - beforeMem) / inputs.size();
+      sd.stat.usedMemory = (malloc_count_current() - beforeMem) / problemInstances.size();
     }
   }
 
-  void createProblemInstances(std::vector<ProblemInstancePtr> & problemInstances) {
+  void createProblemInstances(const int numberOfProblemInstancesToSolve) {
+    problemInstances.resize(numberOfProblemInstancesToSolve);
     for(ProblemInstancePtr & i : problemInstances) {
       i = p.createInstance();
     }
@@ -187,15 +198,17 @@ class BenchmarkInstance : public Benchmark::Instance {
 
   void createSolverData(const std::vector<const Solver*>& solverPtrs, int nProblemInstancesToSolve) {
     solverData.reserve(solverPtrs.size());
-    const int nVariants = p.getVariants().size();
+    const int nVariants = std::min(maxVariant + 1, (int)p.getVariants().size());
     for (const Solver* sp : solverPtrs) {
       solverData.emplace_back(*sp, nProblemInstancesToSolve, nVariants);
     }
   }
 
-  Problem p;
+  const Problem & p;
   std::vector<SolverData> solverData;
   bool verbose;
+  int maxVariant;
+  std::vector<ProblemInstancePtr> problemInstances;
 };
 
 
@@ -221,17 +234,17 @@ void BenchmarkInstance<Problem_> ::Statistics::SolvingVariantStat::calc() {
 
 
 template<typename Problem_>
-void BenchmarkInstance<Problem_>::printHeader(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors) const {
+void BenchmarkInstance<Problem_>::printHeader(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors, bool relative = false) const {
   out << std::setw(nameWidth) << "Name" << sep;
-  Statistics::outHeaderList(p, out, sep, showErrors);
+  Statistics::outHeaderList(p, maxVariant, out, sep, showErrors, relative);
   out << std::endl;
 }
 
 template<typename Problem_>
-void BenchmarkInstance<Problem_>::printStat(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors) const {
+void BenchmarkInstance<Problem_>::printStat(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors, int refSolverIndex) const {
   for (const SolverData& sd : solverData) {
     out << std::setw(nameWidth) << sd.solver.getName() << sep;
-    sd.stat.outList(out, sep, showErrors);
+    sd.stat.outList(out, sep, showErrors, refSolverIndex == -1 ? nullptr : &solverData[std::max(std::min((size_t) refSolverIndex, solverData.size()), (size_t)0)].stat);
     out << std::endl;
   }
 }
@@ -254,13 +267,13 @@ void BenchmarkInstance<Problem_>::run(int argc, const char ** argv, int numberOf
   createSolverData(solverPtrs, numberOfProblemInstancesToSolve);
   if(verbose) std::cout << "createSolverData:" << stopWatch.readAndReset() << std::endl;
 
-  std::vector<ProblemInstancePtr> problemInstances(numberOfProblemInstancesToSolve);
-  createProblemInstances(problemInstances);
+  createProblemInstances(numberOfProblemInstancesToSolve);
   if(verbose) std::cout << "createProblemInstances:" << stopWatch.readAndReset() << std::endl;
-  createSolverInstances(problemInstances);
+  createSolverInstances();
   if(verbose) std::cout << "createSolverInstances:" << stopWatch.readAndReset() << std::endl;
 
   for(auto variant : p.getVariants()){
+    if((int)variant > maxVariant) break;
     for(SolverData & sd : solverData) {
       StopWatch stopWatch;
       for(size_t i = 0, end = problemInstances.size(); i < end; i++) {
@@ -270,8 +283,16 @@ void BenchmarkInstance<Problem_>::run(int argc, const char ** argv, int numberOf
       }
       sd.stat[variant].durationSolving = stopWatch.read();
     }
-    if(verbose) std::cout << "runningSolverInstances:" << stopWatch.readAndReset() << std::endl;
+    if(verbose) std::cout << "runningSolverInstances took:" << stopWatch.readAndReset() << std::endl;
+  }
+}
 
+
+template <typename Problem_>
+void BenchmarkInstance<Problem_>::calcErrorStat() {
+  StopWatch stopWatch;
+  for(auto variant : p.getVariants()){
+    if((int)variant > maxVariant) break;
     for(SolverData & sd : solverData) {
       StopWatch stopWatch;
       int i = 0;
@@ -281,16 +302,30 @@ void BenchmarkInstance<Problem_>::run(int argc, const char ** argv, int numberOf
       }
       sd.stat.calc();
     }
-    if(verbose) std::cout << "checkingResults:" << stopWatch.readAndReset() << std::endl;
+    if(verbose) std::cout << "checkingResults("<< variant << ") took :" << stopWatch.readAndReset() << std::endl;
   }
 }
 
-
 template <typename Problem_>
 class ProblemBenchmark : public Benchmark {
-  virtual std::unique_ptr<Instance> createInstance(bool verbose) const override {
-    return std::unique_ptr<Instance>(new BenchmarkInstance<Problem_>(verbose));
+  virtual std::unique_ptr<Instance> createInstance(int maxVariant, bool verbose) const override {
+    return std::unique_ptr<Instance>(new BenchmarkInstance<Problem_>(p, maxVariant, verbose));
   }
+
+  virtual int getSolverIndex(const std::string name) const {
+    int i = 0;
+    for(auto s: ProblemSolver<Problem_>::getSolvers()){
+      if(s->getName().find(name) != std::string::npos){
+        return i;
+      }
+      i++;
+    }
+    return -1;
+  }
+
+  virtual std::string getProblemName() const { return p.getName(); };
+ private:
+  Problem_ p;
 };
 
 }
