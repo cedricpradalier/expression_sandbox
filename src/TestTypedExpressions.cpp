@@ -31,9 +31,27 @@ void someUnitTests(){
   static_assert(0 == internal::getNextLevel<L<-1>, L<2> >(), "");
 }
 
-template <typename EXP>
-int evalIt_JustToLookAtTheCompilersListings (const EXP & ex) {
-  return ex.eval().getValue();
+template <typename T, T t> struct MemberAccessor;
+template <typename A, typename B, B A::*bp>
+struct MemberAccessor<B A::*, bp>  {
+  B & accessMember(A & a) {return a.*bp; }
+};
+
+
+#define MA(X) MemberAccessor<decltype(&X), &X>
+
+void testMemberAccessor() {
+  struct A{
+    int b;
+  } a{333};
+
+  int result = MA(A::b)().accessMember(a);
+
+
+  std::cout << "result=" << std::endl << result << std::endl; // is in deed 333!
+
+  MA(A::b)().accessMember(a) = 444;
+  std::cout << "a.b=" << std::endl << a.b << std::endl;
 }
 
 int main(int argc, char **argv) {
@@ -66,5 +84,7 @@ int main(int argc, char **argv) {
   std::cout << "C=" << C << "="<< C.eval() << std::endl;
 //  auto U = A + a; // should fail compilation!
 
+
+  testMemberAccessor();
   return z.eval().getValue();
 }
