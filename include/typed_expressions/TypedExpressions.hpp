@@ -271,6 +271,26 @@ inline typename Result::App operator + (const A & a, const B & b){
   return Result(a, b);
 }
 
+/* TODO remove the space template parameter
+#define RESULT_SP(Op, A, B) typename ResultBinOp<Op,A,B>::type
+
+template <template <typename, typename> class BinOp, typename A, typename B>
+struct ResultBinOp;
+
+template <template <typename, typename> class BinOp, typename A>
+struct ResultBinOp<BinOp, A, A>{
+  typedef A type;
+};
+
+
+template <typename A, typename B>
+class Times : public BinOpBase<A, B, Times<A, B> >{
+ public:
+  typedef BinOpBase<A, B, RESULT_SP(evalTimes, A, B), Times<A, B> > Base;
+  typedef Space_ Space;
+*/
+
+
 template <typename A, typename B, typename Space_ = RESULT_SPACE(evalTimes, A, B)>
 class Times : public BinOpBase<A, B, Space_, Times<A, B, Space_> >{
  public:
@@ -487,8 +507,8 @@ class ExtVariable : public OpMemberBase<typename get_space<Space>::type, ExtVari
 
   inline ExtVariable(const Space * ps = nullptr) : s(ps) {}
 
-  inline Space eval() const {
-    return s->eval();
+  inline const Space & eval() const {
+    return *s;
   }
 
   inline void setStorage(const Space * ps){
