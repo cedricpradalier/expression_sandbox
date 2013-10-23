@@ -1,6 +1,5 @@
 #include <ceres/ceres.h>
 #include <ceres/rotation.h>
-#include <ceres/small_blas.h>
 #include <ceres/local_parameterization.h>
 #include <benchmark/ProblemSolver.hpp>
 #include "ProjectionProblem.hpp"
@@ -12,11 +11,6 @@ namespace ceres_solver {
 using namespace ceres;
 
 struct TestErrorQuat {
-//    TestErrorQuat(double u, double v, double weight=1.0)
-//        : u(u), v(v), weight(weight)
-//    {
-//    }
-
     template <typename T>
         bool operator()(const T* const q_1_2,
                 const T* const p,
