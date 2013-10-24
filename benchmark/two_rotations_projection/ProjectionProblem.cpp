@@ -123,5 +123,5 @@ void ProjectionProblem::calcSolutionInto(const Input & input, Output & output) {
 ::benchmark::DummySolver<ProjectionProblem> dummySolverInstance;
 ::benchmark::ProblemBenchmark<ProjectionProblem> benchmark;
 
-}
+} //namespace projection_problem
 
