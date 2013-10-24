@@ -45,7 +45,7 @@ TEST(Rotation, Basics3d){
   ASSERT_EQ(id, minusId); // because we are comparing rotations!
   ASSERT_EQ(minusId, ii.eval());
   ASSERT_EQ(id, iiii.eval());
-  ASSERT_PRED3(isNear<3>, z.eval(), halfI.rotate(y).eval(), eps * 2);
-  ASSERT_PRED3(isNear<3>, x.eval(), ii.rotate(x).eval(), eps);
-  ASSERT_PRED3(isNear<3>, y.eval(), ii.rotate(y).eval(), eps);
+  ASSERT_PRED3(isNear<3>, z, halfI.rotate(y).eval(), eps * 2);
+  ASSERT_PRED3(isNear<3>, x, ii.rotate(x).eval(), eps);
+  ASSERT_PRED3(isNear<3>, y, ii.rotate(y).eval(), eps);
 }

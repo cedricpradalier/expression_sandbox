@@ -86,13 +86,13 @@ TEST(Requirements, EuclideanRotation){
   PRINT_EXP(rEighthSquared);
   PRINT_EXP(rQuaterToThePowerOfFour);
 
-  ASSERT_PRED3(isNear<2>, y.eval(), rQuater.rotate(x).eval(), eps);
-  ASSERT_PRED3(isNear<2>, w.eval(), rEighth.rotate(x).eval(), eps);
+  ASSERT_PRED3(isNear<2>, y, rQuater.rotate(x).eval(), eps);
+  ASSERT_PRED3(isNear<2>, w, rEighth.rotate(x).eval(), eps);
   ASSERT_EQ(rQuater, rEighthSquared.eval());
   ASSERT_EQ(rQuaterToThePowerOfFour.eval(), EuclideanSpace<2>::Rotation(RotationFraction(1.0)));
-  ASSERT_PRED3(isNear<2>, y.eval(), rEighthSquared.rotate(x).eval(), eps);
-  ASSERT_PRED3(isNear<2>, x.eval(), rQuaterToThePowerOfFour.rotate(x).eval(), eps);
-  ASSERT_PRED3(isNear<2>, y.eval(), rQuaterToThePowerOfFour.rotate(y).eval(), eps);
+  ASSERT_PRED3(isNear<2>, y, rEighthSquared.rotate(x).eval(), eps);
+  ASSERT_PRED3(isNear<2>, x, rQuaterToThePowerOfFour.rotate(x).eval(), eps);
+  ASSERT_PRED3(isNear<2>, y, rQuaterToThePowerOfFour.rotate(y).eval(), eps);
 }
 #endif
 
@@ -139,8 +139,8 @@ class AddElemental : public BinOpBase<A, B, Space_, AddElemental<A, B, Space_> >
 
   AddElemental(const A & a, const B & b) : Base(a, b){}
 
-  Space_ eval() const {
-    return addElementalImpl(this->getA().eval(), this->getB().eval());
+  const Space_ evalImpl() const {
+    return addElementalImpl(evalExp(this->getA()), evalExp(this->getB()));
   }
 
   friend

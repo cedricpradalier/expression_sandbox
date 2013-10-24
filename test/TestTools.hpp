@@ -14,7 +14,7 @@
 
 constexpr static double eps = std::numeric_limits<double>::epsilon();
 
-#define PRINT_EXP(EXP) std::cout <<  #EXP << " = " << EXP << " = " << EXP.eval() << std::endl;
+#define PRINT_EXP(EXP) std::cout <<  #EXP << " = " << EXP << " = " << evalExp(EXP) << std::endl;
 
 namespace TEX_NAMESPACE {
   template <int Dim_>

@@ -61,6 +61,8 @@ namespace internal {
     typedef typename std::remove_reference<decltype(unwrap((R*)nullptr))>::type type;
   };
 
+#define GET_SPACE(T) typename get_space<T>::type
+
   constexpr int max(int a, int b) {
     return a > b ? a : b;
   }
@@ -101,6 +103,18 @@ namespace internal {
 using internal::get_space;
 using internal::get_dim;
 
+// ************* default evalExp functions **************8
+
+template <typename ExpType, typename = typename std::enable_if<! std::is_same<ExpType, typename get_space<ExpType>::type>::value>::type>
+inline const typename get_space<ExpType>::type evalExp(const ExpType & t) {
+  return t.evalImpl();
+}
+
+template <typename T, typename = typename std::enable_if<std::is_same<T, typename get_space<T>::type>::value>::type>
+inline const T & evalExp(const T & t){
+  return t;
+}
+
 // **************** virtual operational base ***************
 
 template <typename Space_>
@@ -108,7 +122,7 @@ class VOpBase : public OpBase<Space_>, public AnyExp<Space_, VOpBase<Space_> > {
  public:
   typedef Space_ Space;
 
-  inline Space eval() const { return evalImpl(); }
+  inline const Space eval() const { return evalVImpl(); }
 
   friend std::ostream & operator <<(std::ostream & out, const VOpBase & op){
     op.printImpl(out);
@@ -117,12 +131,12 @@ class VOpBase : public OpBase<Space_>, public AnyExp<Space_, VOpBase<Space_> > {
 
   virtual ~VOpBase(){};
  private:
-  virtual Space evalImpl() const = 0;
+  virtual const Space evalVImpl() const = 0;
   virtual void printImpl(std::ostream & out) const = 0;
 };
 
 template <typename ExpType_, typename PtrType_ = std::shared_ptr<const ExpType_>, bool cloneIt = true>
-struct ExpPtr : public OpBase<typename get_space<ExpType_>::type>, public OpMemberBase<typename get_space<ExpType_>::type, ExpPtr<ExpType_, PtrType_, cloneIt> >{
+struct ExpPtr : public OpBase<typename get_space<ExpType_>::type>, public OpMemberBase<typename get_space<ExpType_>::type, ExpPtr<ExpType_, PtrType_, cloneIt> >, public AnyExp<typename get_space<ExpType_>::type, ExpType_>{
   typedef typename get_space<ExpType_>::type Space;
   typedef ExpType_ ExpType;
   typedef PtrType_ PtrType;
@@ -137,7 +151,9 @@ struct ExpPtr : public OpBase<typename get_space<ExpType_>::type>, public OpMemb
     return *ptr_;
   }
 
-  inline Space eval() const { return ptr_->eval(); }
+  inline Space evalImpl() const { return ptr_->eval(); }
+  inline Space eval() const { return evalImpl(); }
+  Space evalVImpl() const { return evalImpl(); }
   friend std::ostream & operator <<(std::ostream & out, const ExpPtr & eptr){
     return out << "@" << *eptr.ptr_;
   }
@@ -180,7 +196,7 @@ namespace internal {
 template <typename T, int Level>
 struct OperandStorage{
   typedef T StorageType;
-  typedef T EvaluableType;
+  typedef const T & EvaluableType;
 };
 
 template <typename Space>
@@ -195,6 +211,10 @@ class GenericOp : public OpMemberBase<Space_, DERIVED>, public OpBase<Space_>, p
   typedef DERIVED App;
   constexpr static int Level = Level_;
   typedef Space_ Space;
+
+  inline Space_ eval() const {
+    return evalExp(static_cast<const DERIVED&>(*this));
+  }
 };
 
 
@@ -204,9 +224,16 @@ class GenericOp<Space_, DERIVED, 0> : public VOpBase<Space_> , public OpMemberBa
   typedef ErasingPtr<Space_> App;
   constexpr static int Level = DefaultLevel;
 
+  inline const Space_ eval() const {
+    return evalImpl();
+  }
+  inline const Space_ evalImpl() const {
+    return evalExp(static_cast<const DERIVED&>(*this));
+  }
+
   virtual ~GenericOp(){};
  private:
-  virtual Space_ evalImpl() const {
+  virtual const Space_ evalVImpl() const {
     static_assert(!std::is_same<decltype(&DERIVED::eval), decltype(&VOpBase<Space_>::eval)>::value, "Eval must be shadowed in an Operation");
     return static_cast<const DERIVED&>(*this).eval();
   }
@@ -219,15 +246,24 @@ class GenericOp<Space_, DERIVED, 0> : public VOpBase<Space_> , public OpMemberBa
 template<typename A, typename Space_, typename DERIVED>
 class UnOpBase : public GenericOp<Space_, DERIVED, internal::getNextLevel<A>()> {
   typedef GenericOp<Space_, DERIVED, internal::getNextLevel<A>()> Base;
+ public:
+  const typename OperandStorage<A, Base::Level>::EvaluableType & getA() const { return a_; }
  protected:
   UnOpBase(const A & a) : a_(a) {}
-  const typename OperandStorage<A, Base::Level>::EvaluableType & getA() const { return a_; }
  private:
   typename OperandStorage<A, Base::Level>::StorageType a_;
 };
 
+template <typename SpaceA_, typename SpaceB_, typename ExpType_>
+struct AnyBinOp {
+  inline const ExpType_ & getExp() const { return static_cast<ExpType_ const &>(*this); }
+  inline ExpType_ & getExp() { return static_cast<ExpType_&>(*this); }
+  inline operator const ExpType_ & () const { return getExp(); }
+  inline operator ExpType_ & () { return getExp(); }
+};
+
 template<typename A, typename B, typename Space_, typename DERIVED>
-class BinOpBase : public GenericOp<Space_, DERIVED, internal::getNextLevel<A, B>()> {
+class BinOpBase : public GenericOp<Space_, DERIVED, internal::getNextLevel<A, B>()>, public AnyBinOp<GET_SPACE(A), GET_SPACE(B), DERIVED> {
  public:
   typedef GenericOp<Space_, DERIVED, internal::getNextLevel<A, B>()> Base;
   constexpr static size_t DimA = get_dim<A>::value;
@@ -242,7 +278,6 @@ class BinOpBase : public GenericOp<Space_, DERIVED, internal::getNextLevel<A, B>
   typename OperandStorage<B, Base::Level>::StorageType b_;
 };
 
-
 #define RESULT_SPACE(METHOD, TYPE_A, TYPE_B) decltype(static_cast<typename get_space<TYPE_A>::type*>(nullptr)->METHOD(*static_cast<typename get_space<TYPE_B>::type*>(nullptr)))
 #define RESULT_SPACE1(METHOD, TYPE_A) decltype(static_cast<typename get_space<TYPE_A>::type*>(nullptr)->METHOD())
 
@@ -256,8 +291,8 @@ class Plus : public BinOpBase<A, B, Space_, Plus<A, B, Space_> >{
 
   Plus(const A & a, const B & b) : Base(a, b){}
 
-  Space eval() const {
-    return this->getA().eval().evalSum(this->getB().eval());
+  const Space evalImpl() const {
+    return evalExp(this->getA()).evalSum(evalExp(this->getB()));
   }
 
   friend
@@ -299,8 +334,8 @@ class Times : public BinOpBase<A, B, Space_, Times<A, B, Space_> >{
 
   Times(const A & a, const B & b) : Base(a, b){}
 
-  Space eval() const {
-    return this->getA().eval().evalTimes(this->getB().eval());
+  inline const Space evalImpl() const {
+    return evalExp(this->getA()).evalTimes(evalExp(this->getB()));
   }
 
   friend
@@ -327,8 +362,8 @@ class Rotate : public BinOpBase<A, B, Space_, Rotate<A, B, Space_> > {
 
   Rotate(const A & a, const B & b) : Base(a, b){}
 
-  Space eval() const {
-    return this->getA().eval().evalRotate(this->getB().eval());
+  inline const Space evalImpl() const {
+    return evalExp(*this);
   }
 
   /* TODO implement expand
@@ -342,6 +377,12 @@ class Rotate : public BinOpBase<A, B, Space_, Rotate<A, B, Space_> > {
     return out << op.getA() << ".rotate(" << op.getB() << ")";
   }
 };
+
+
+template <typename A, typename B, typename Space_>
+inline const Space_ evalExp(const Rotate<A, B, Space_> & r){
+  return evalExp(r.getA()).evalRotate(evalExp(r.getB()));
+}
 
 namespace internal {
   template <typename A, typename B, typename Space>
@@ -363,8 +404,8 @@ class Inverse : public UnOpBase<A, Space_, Inverse<A, Space_> > {
 
   Inverse(const A & a) : Base(a){}
 
-  Space_ eval() const {
-    return this->getA().eval().evalInverse();
+  Space_ evalImpl() const {
+    return evalExp(this->getA()).evalInverse();
   }
 
   friend
@@ -393,8 +434,8 @@ class Neg : public UnOpBase<A, Space_, Neg<A, Space_> > {
 
   Neg(const A & a) : Base(a){}
 
-  Space_ eval() const {
-    return this->getA().eval().evalNegate();
+  const Space_ evalImpl() const {
+    return evalExp(this->getA()).evalNegate();
   }
 
   friend
@@ -467,8 +508,12 @@ class Variable : public OpMemberBase<typename get_space<Space>::type, Variable<S
     return *this;
   }
 
-  inline Space eval() const {
-    return s.eval();
+  inline const Space & evalImpl() const {
+    return s;
+  }
+
+  inline const Space & eval() {
+    return evalImpl();
   }
 
   friend std::ostream & operator << (std::ostream & out, const Variable & namedExp) {
@@ -501,13 +546,13 @@ struct OperandStorage<Variable<ExpType, true>, Level> {
 
 
 template <typename Space>
-class ExtVariable : public OpMemberBase<typename get_space<Space>::type, ExtVariable<Space> > {
+class ExtVariable : public OpMemberBase<Space, ExtVariable<Space> > {
  public:
   constexpr static int Level = internal::getLevel<Space>();
 
   inline ExtVariable(const Space * ps = nullptr) : s(ps) {}
 
-  inline const Space & eval() const {
+  inline const Space & evalImpl() const {
     return *s;
   }
 
@@ -520,7 +565,7 @@ class ExtVariable : public OpMemberBase<typename get_space<Space>::type, ExtVari
     return out;
   }
  private:
-  const Space *s; // of course it would be nicer to have this as a private base, but the compiler then yields ambiguous member access errors, when OpMemberBase has identical member functions... (compiler bug?)
+  const Space *s;
 };
 
 namespace internal {
@@ -531,14 +576,110 @@ namespace internal {
   };
 }
 
-template <typename ExpType, int Level>
-struct OperandStorage<ExtVariable<ExpType>, Level> {
-  typedef ExpPtr<ExtVariable<ExpType>, const ExtVariable<ExpType> *, false> StorageType;
-  typedef ExtVariable<ExpType> EvaluableType;
+template <typename Space, int Level>
+struct OperandStorage<ExtVariable<Space>, Level> {
+  typedef ExpPtr<ExtVariable<Space>, const ExtVariable<Space> *, false> StorageType;
+  typedef ExtVariable<Space> EvaluableType;
+};
+
+template <typename Space>
+class Ref : public OpMemberBase<Space, Ref<Space> > {
+ public:
+  constexpr static int Level = internal::getLevel<Space>();
+
+  Ref(const Space & s) : s(s){}
+
+  inline const Space & eval() const {
+    return s;
+  }
+
+  inline operator const Space & () const {
+    return s;
+  }
+
+  friend std::ostream & operator << (std::ostream & out, const Ref & ref) {
+    out << "$" << (*ref.s);
+    return out;
+  }
+ private:
+  const Space & s;
+};
+
+namespace internal {
+  template <typename Space>
+  struct get_space<Ref<Space>>{
+   public:
+    typedef Space type;
+  };
+}
+
+template <typename Space, int Level>
+struct OperandStorage<Ref<Space>, Level> {
+  typedef Ref<Space> StorageType;
+  typedef const Space & EvaluableType;
+};
+
+template <typename Space, const Space& s_>
+class StaticRef : public OpMemberBase<Space, StaticRef<Space, s_> > {
+ public:
+  constexpr static int Level = internal::getLevel<Space>();
+  constexpr static Space & s = s_;
+
+  inline const Space & eval() const {
+    return s;
+  }
+
+  friend std::ostream & operator << (std::ostream & out, const StaticRef & namedExp) {
+    out << "$" << (*namedExp.s);
+    return out;
+  }
+};
+
+namespace internal {
+  template <typename Space, Space & s>
+  struct get_space<StaticRef<Space, s>>{
+   public:
+    typedef Space type;
+  };
+}
+
+template <typename Space, Space & s, int Level>
+struct OperandStorage<StaticRef<Space, s>, Level> {
+  typedef StaticRef<Space, s> StorageType;
+  typedef StaticRef<Space, s> EvaluableType;
+};
+
+template <typename Space, const Space& s_>
+class Functor : public OpMemberBase<Space, Functor<Space, s_> > {
+ public:
+  constexpr static int Level = internal::getLevel<Space>();
+  constexpr static Space & s = s_;
+
+  inline const Space & eval() const {
+    return s;
+  }
+
+  friend std::ostream & operator << (std::ostream & out, const Functor & namedExp) {
+    out << "$" << (*namedExp.s);
+    return out;
+  }
+};
+
+namespace internal {
+  template <typename Space, Space & s>
+  struct get_space<Functor<Space, s>>{
+   public:
+    typedef Space type;
+  };
+}
+
+template <typename Space, Space & s, int Level>
+struct OperandStorage<Functor<Space, s>, Level> {
+  typedef Functor<Space, s> StorageType;
+  typedef Functor<Space, s> EvaluableType;
 };
 
 #define SUPPORTS_VARIABLES
-
 
 
 template <typename T>
@@ -546,8 +687,8 @@ struct VWrapper : public T, public VOpBase<typename get_space<T>::type> {
   typedef typename get_space<T>::type Space;
   VWrapper(const T & t) : T(t) {}
   virtual ~VWrapper(){}
-  virtual Space evalImpl() const {
-    return static_cast<const T&>(*this).eval();
+  virtual const Space evalVImpl() const {
+    return evalExp(static_cast<const T&>(*this));
   }
   virtual void printImpl(std::ostream & out) const {
     out << static_cast<const T&>(*this);
@@ -619,10 +760,6 @@ auto toExp(Any_ v) -> typename SWrapper<Any_>::WrappedType {
 // **************** example spaces ****************
 class SimpleSpace {
  public:
-  const SimpleSpace & eval() const { // TODO make this function unnecessary
-    return *this;
-  }
-
   SimpleSpace(int v = 0) : value(v){}
 
   SimpleSpace evalSum(const SimpleSpace & other) const {
@@ -650,10 +787,6 @@ template <size_t Dim_>
 class TemplatedSpace {
  public:
   constexpr static size_t Dimension = Dim_;
-  const TemplatedSpace & eval() const { // TODO make this function unnecessary
-    return *this;
-  }
-
   TemplatedSpace(){
     for(int i = 0; i < Dimension; i ++) { value[i] = 0; }
   }
@@ -681,8 +814,11 @@ class TemplatedSpace {
   int value[Dimension];
 };
 
-}
+} // namespace TEX_NAMESPACE
 
 namespace tex = TEX_NAMESPACE;
+
+#include "internal/Derivatives.hpp"
+
 
 #endif /* TYPEDEXPRESSIONS_HPP_ */

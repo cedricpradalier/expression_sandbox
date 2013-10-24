@@ -182,9 +182,6 @@ class UnitQuaternion : public EuclideanPoint<4> {
   typedef quat_calc::internal::QuaternionCalculator<double> Calc;
   typedef EuclideanPoint<4> Base;
 
-  const UnitQuaternion & eval() const { // TODO make this function unnecessary
-    return *this;
-  }
 
   UnitQuaternion() = default;
   UnitQuaternion(const UnitQuaternion & q) = default;

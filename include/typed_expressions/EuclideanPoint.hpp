@@ -24,10 +24,6 @@ using namespace linalg;
 template <typename PrimScalar_>
 class Scalar {
  public:
-  const Scalar & eval() const { // TODO make this function unnecessary
-    return *this;
-  }
-
   Scalar(PrimScalar_ v = 0) : value_(v){}
 
   Scalar evalSum(const Scalar & other) const {
@@ -62,8 +58,8 @@ class Dot : public BinOpBase<A, B, Space_, Dot<A, B, Space_> > {
 
   Dot(const A & a, const B & b) : Base(a, b){}
 
-  Space_ eval() const {
-    return this->getA().eval().evalDot(this->getB().eval());
+  const Space_ evalImpl() const {
+    return evalExp(this->getA()).evalDot(evalExp(this->getB()));
   }
 
   friend
@@ -90,10 +86,6 @@ class EuclideanPoint : public Vector<Dim_> {
  public:
   constexpr static MatrixSize Dimension = Dim_;
   typedef Scalar<typename Vector<Dimension>::Scalar> ScalarSpace;
-
-  const EuclideanPoint & eval() const { // TODO make this function unnecessary
-    return *this;
-  }
 
   EuclideanPoint() = default;
 

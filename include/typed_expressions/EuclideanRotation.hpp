@@ -82,9 +82,6 @@ template <>
 class EuclideanRotation<2> {
  public:
   constexpr static MatrixSize Dimension = 2;
-  const EuclideanRotation & eval() const { // TODO make this function unnecessary
-    return *this;
-  }
 
   EuclideanRotation(const RotationFraction & angle) : angle_(angle){}
 
@@ -131,9 +128,6 @@ template <>
 class EuclideanRotation<3> {
  public:
   constexpr static MatrixSize Dimension = 3;
-  const EuclideanRotation & eval() const { // TODO make this function unnecessary
-    return *this;
-  }
 
   EuclideanRotation(std::initializer_list<double> q) : q_(asMatrixConvertible(q)){}
   template <typename T>
