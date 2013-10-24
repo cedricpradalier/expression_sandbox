@@ -37,7 +37,7 @@ std::ostream & operator << (std::ostream & out, const typename StopWatch::durati
 
 int main(int argc, const char **argv) {
   bool verbose, error;
-  int nRuns, nIterations, maxVariant;
+  long unsigned nRuns, nIterations, maxVariant;
   std::string refSolver;
 
   po::options_description desc("benchmark options");
@@ -60,8 +60,6 @@ int main(int argc, const char **argv) {
             //.positional(p)
             .run(), vm);
   po::notify(vm);
-
-
 
   using namespace benchmark;
 
@@ -94,9 +92,9 @@ int main(int argc, const char **argv) {
 
     for(Output & o : outputs) o.out << "NEW PROBLEM(" << bp->getProblemName() << "):" << std::endl;
 
-    for(int numberOfRepetitions = nIterations ; numberOfRepetitions <= numberOfRepetitions; numberOfRepetitions *= 1000){
+    for(unsigned long long numberOfRepetitions = nIterations ; numberOfRepetitions <= nRuns; numberOfRepetitions *= 1000){
+      if(!nRuns || !numberOfRepetitions) continue;
       int numberOfProblemInstancesToSolve = nRuns / numberOfRepetitions;
-      if(!numberOfProblemInstancesToSolve) continue;
 
       auto b = bp->createInstance(maxVariant, verbose);
       for(Output & o : outputs) b->printHeader(o.out, o.nameWidth, o.sep, o.showErrors, !refSolver.empty());
