@@ -259,6 +259,21 @@ class UnitQuaternion : public EuclideanPoint<4> {
 //    return result;
   }
 
+  inline EuclideanPoint<3> evalInverseRotate(const EuclideanPoint<3> & other) const{
+    EuclideanPoint<3> ret;
+    evalInverseRotateInto(other, ret);
+    return ret;
+  }
+  inline void evalInverseRotateInto(const EuclideanPoint<3> & other, EuclideanPoint<3> & result) const{
+    /* see evalRotateInto */
+    auto & q = getValue();
+    auto & q_R = q[Calc::RIndex];
+    auto q_I = Calc::getImagPart(q);
+    auto & v = other.getValue();
+    result = (q_R * q_R - q_I.dot(q_I)) * v + (2 * v.dot(q_I)) * q_I + (2 * q_R) * (v.cross(q_I));
+  }
+
+
   inline EuclideanPoint<3> evalRotateDiff(const Vector<3> & thisTangent, const EuclideanPoint<3> & other, const Vector<3> & otherTangent) const{
     return
         Calc::getImagPart(Calc::quatMult(Calc::quatMult(getValue(), other.getValue()), Calc::conjugate(getValue()))) +
@@ -304,6 +319,13 @@ class UnitQuaternion : public EuclideanPoint<4> {
     return K;
   }
 };
+
+
+
+template <typename A, typename B>
+inline const EuclideanPoint<3> evalExp(const Rotate<Inverse<A>, B, EuclideanPoint<3> > & r){
+  return evalExp(r.getA().getA()).evalInverseRotate(evalExp(r.getB()));
+}
 
 template <typename DERIVED>
 struct OpMemberBase<UnitQuaternion, DERIVED> {
