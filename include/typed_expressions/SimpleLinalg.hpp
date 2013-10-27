@@ -42,8 +42,12 @@ struct Storage : private ArrayOrPointer<Scalar_, Rows_ * Cols_, IsMap> {
   constexpr static size_t Rows = Rows_, Cols = Cols_;
   constexpr static size_t Size = Rows * Cols;
 
+  size_t getMemRowLength() const {
+    return Cols + this->stride;
+  }
+
   inline size_t calcIndex(size_t row, size_t col) const {
-    return col + (Cols + this->stride) * row;
+    return col + getMemRowLength() * row;
   }
   Scalar_ & accessEntry(size_t i, size_t j) {
     return this->value[calcIndex(i, j)];
@@ -105,7 +109,15 @@ class Matrix : public internal::Storage<Scalar_, Rows_, Cols_, IsMap>, public Ma
     setAll(Scalar(1));
   }
 
-  inline Matrix(std::function<Scalar (size_t i, size_t j)> getEntry) {
+  inline Matrix & eval() {
+    return *this;
+  }
+  inline const Matrix & eval() const {
+    return *this;
+  }
+
+  template<typename MatrixFunctor, typename = decltype (static_cast<MatrixFunctor*>(nullptr)->operator()(size_t(0), size_t(0)))>
+  inline Matrix(MatrixFunctor getEntry) {
     for(size_t i = 0; i < Rows; i++) {
        for(size_t j = 0; j < Cols; j++) {
          Storage::accessEntry(i, j) = getEntry(i, j);
@@ -113,11 +125,22 @@ class Matrix : public internal::Storage<Scalar_, Rows_, Cols_, IsMap>, public Ma
     }
   }
 
-  inline Matrix(std::function<Scalar (size_t i)> getEntry) {
+  template<typename VectorFunctor, typename = decltype (static_cast<VectorFunctor*>(nullptr)->operator()(size_t(0)))>
+  inline Matrix(VectorFunctor getEntry, void * dummy = nullptr) { // without this dummy this function would be to similar to the one before
     for(size_t i = 0; i < Size; i++) {
      (*this)[i] = getEntry(i);
     }
   }
+
+  template<typename VectorFunctor>
+  inline Matrix(VectorFunctor getEntry, size_t size) {
+    size_t i = 0;
+    for(; i < size; i++) {
+     (*this)[i] = getEntry(i);
+    }
+    for(; i < Size; i ++) { (*this)[i] = 0; }
+  }
+
 
   Matrix(std::initializer_list<Scalar> entries){
     if(entries.size() > Size) throw std::runtime_error("too many initializing entries");
@@ -134,15 +157,31 @@ class Matrix : public internal::Storage<Scalar_, Rows_, Cols_, IsMap>, public Ma
     return Storage::accessEntry(i, j);
   }
 
-  template <typename Other>
-  Matrix operator = (const MatrixBase<Other> & other) {
-    Matrix r;
+  template <typename Functor>
+  Matrix modify(const Functor & modifier) {
     for(size_t i = 0; i < Rows; i++) {
        for(size_t j = 0; j < Cols; j++) {
-         *this(i, j) = other(i, j);
+         modifier((*this)(i, j), i, j);
        }
     }
-    return r;
+    return *this;
+  }
+
+  template <typename Other>
+  Matrix & operator = (const MatrixBase<Other> & other) {
+    modify([&other](Scalar & s, size_t i, size_t j) { s = other(i, j); });
+  }
+
+  template <bool OtherIsMap>
+  Matrix operator += (const Matrix<Scalar, Rows, Cols, OtherIsMap> & other) {
+    modify([&other](Scalar & s, size_t i, size_t j) { return s += other(i, j); });
+    return *this;
+  }
+
+  template <bool OtherIsMap>
+  Matrix operator -= (const Matrix<Scalar, Rows, Cols, OtherIsMap> & other) {
+    modify([&other](Scalar & s, size_t i, size_t j) { return s -= other(i, j); });
+    return *this;
   }
 
 
@@ -194,21 +233,13 @@ class Matrix : public internal::Storage<Scalar_, Rows_, Cols_, IsMap>, public Ma
     return NonMapMatrix([this](size_t i, size_t j) { return -(*this)(i, j); });
   }
 
-  void modify(std::function<void(Scalar & s)> modifier) {
-    for(size_t i = 0; i < Rows; i++) {
-       for(size_t j = 0; j < Cols; j++) {
-         modifier((*this)(i, j));
-       }
-    }
-  }
-
   Matrix & operator /= (Scalar d) {
-    modify([d](Scalar & s){ s/= d; });
+    modifyScalars([d](Scalar & s){ s/= d; });
     return *this;
   }
 
   Matrix & operator *= (Scalar d) {
-    modify([d](Scalar & s){ s*= d; });
+    modifyScalars([d](Scalar & s){ s*= d; });
     return *this;
   }
 
@@ -246,12 +277,12 @@ class Matrix : public internal::Storage<Scalar_, Rows_, Cols_, IsMap>, public Ma
 
   template <size_t rows, size_t cols>
   inline const Matrix<Scalar, rows, cols, true> block(size_t startI, size_t startJ) const {
-    return Matrix<Scalar, rows, cols, true>(&const_cast<Matrix&>(*this)(startI, startJ), startJ);
+    return Matrix<Scalar, rows, cols, true>(&const_cast<Matrix&>(*this)(startI, startJ), this->getMemRowLength() - cols);
   }
 
   template <size_t rows, size_t cols>
   inline Matrix<Scalar, rows, cols, true> block(size_t startI, size_t startJ) {
-    return Matrix<Scalar, rows, cols, true>(&(*this)(startI, startJ), startJ);
+    return Matrix<Scalar, rows, cols, true>(&(*this)(startI, startJ), this->getMemRowLength() - cols);
   }
 
   bool operator == (const Matrix & other) const {
@@ -262,7 +293,19 @@ class Matrix : public internal::Storage<Scalar_, Rows_, Cols_, IsMap>, public Ma
     }
     return true;
   }
+
+  bool operator != (const Matrix & other) const {
+    return ! ((*this) == other);
+  }
  private:
+  template <typename Functor>
+  void modifyScalars(Functor modifier) {
+    for(size_t i = 0; i < Rows; i++) {
+       for(size_t j = 0; j < Cols; j++) {
+         modifier((*this)(i, j));
+       }
+    }
+  }
 };
 
 template <size_t Rows, size_t Cols>
@@ -278,14 +321,14 @@ typedef size_t MatrixSize;
 template<typename T>
 struct MatrixConvertible {
   typedef const T & type;
-  static inline const T & asMatrixConvertible(const T & t){
+  static inline const T & asMatrixConvertible(const T & t, MatrixSize size = -1){
     return t;
   }
 };
 
 template<typename T>
-inline typename MatrixConvertible<T>::type asMatrixConvertible(const T & t) {
-  return MatrixConvertible<T>::asMatrixConvertible(t);
+inline typename MatrixConvertible<T>::type asMatrixConvertible(const T & t, MatrixSize size = -1) {
+  return MatrixConvertible<T>::asMatrixConvertible(t, size);
 }
 
 

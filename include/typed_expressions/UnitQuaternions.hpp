@@ -11,6 +11,7 @@
 #include "TypedExpressions.hpp"
 #include "SimpleLinalg.hpp" //TODO discuss how to do this
 #include "EuclideanPoint.hpp"
+#include "Derivatives.hpp"
 
 namespace quat_calc {
 using namespace linalg;
@@ -174,14 +175,53 @@ struct QuaternionCalculator {
 }
 
 
+
 namespace TEX_NAMESPACE {
+
 using namespace linalg;
 class UnitQuaternion : public EuclideanPoint<4> {
  private:
  public:
+  constexpr static size_t Dimension = 3;
+
   typedef quat_calc::internal::QuaternionCalculator<double> Calc;
   typedef EuclideanPoint<4> Base;
 
+  struct ZeroTangentVector;
+  template<unsigned BasisIndex>
+  struct BasisTangentVector;
+
+  struct TangentVector : public EuclideanPoint<3> {
+    typedef ZeroTangentVector ZeroVector;
+    template<unsigned BasisIndex>
+    using BasisVector = BasisTangentVector<BasisIndex>;
+
+    TangentVector(const EuclideanPoint<3>& p) : EuclideanPoint<3>(p){}
+  };
+
+  template<unsigned BasisIndex>
+  struct BasisTangentVector : public TangentVector{
+   static const BasisTangentVector<BasisIndex>& getInstance() {
+     const static BasisTangentVector<BasisIndex> Instance; //TODO optimize to static global var
+     return Instance;
+   }
+   private:
+   BasisTangentVector() : TangentVector(EuclideanPoint<3>(asMatrixConvertible([](MatrixSize i, MatrixSize j){ return i == BasisIndex ? 1.0 : 0.0;}))){}
+  };
+
+  template<unsigned BasisIndex>
+  static const BasisTangentVector<BasisIndex> & getBasisVector(){
+    return BasisTangentVector<BasisIndex>::getInstace();
+  }
+
+  struct ZeroTangentVector : public TangentVector{
+    static const ZeroTangentVector& getInstance() {
+      const static ZeroTangentVector Instance;
+      return Instance;
+    }
+   private:
+   ZeroTangentVector() : TangentVector(EuclideanPoint<3>({ 0.0, 0.0, 0.0 })){}
+  };
 
   UnitQuaternion() = default;
   UnitQuaternion(const UnitQuaternion & q) = default;
@@ -191,9 +231,16 @@ class UnitQuaternion : public EuclideanPoint<4> {
      return UnitQuaternion(-getValue());
   }
 
-  UnitQuaternion evalInverse() const {
-     return UnitQuaternion(Calc::conjugate(getValue()));
+  void evalInverseInto(UnitQuaternion & result) const {
+     result = Calc::conjugate(getValue());
   }
+
+  UnitQuaternion evalInverse() const {
+    UnitQuaternion result;
+    evalInverseInto(result);
+    return result;
+  }
+
   UnitQuaternion evalInverseDiff(const Vector<3> & thisTangent) const {
      Vector<4> con = Calc::conjugate(getValue());
      return UnitQuaternion(Calc::quatMult(Calc::quatMult(con, Vector<3>(-thisTangent)), con));
@@ -216,10 +263,13 @@ class UnitQuaternion : public EuclideanPoint<4> {
   }
 
   inline EuclideanPoint<3> evalRotate(const EuclideanPoint<3> & other) const{
-//    EuclideanPoint<3> ret;
-//    Calc::quatMultInto(Calc::quatMult(getValue(), other.getValue()), Calc::conjugate(getValue()), ret.getValue());
-//    return ret;
-
+    EuclideanPoint<3> ret;
+    evalRotateInto(other, ret);
+    return ret;
+  }
+  
+  inline void evalRotateInto(const EuclideanPoint<3> & other, EuclideanPoint<3> & result) const{
+    //Calc::quatMultInto(Calc::quatMult(getValue(), other.getValue()), Calc::conjugate(getValue()), retsult.getValue());
 
     /* Identify v with the pure imaginary quaternion given by other.
      * We simplify then the pure imaginary quaternion. Let ~= denote "equal imaginary part"
@@ -236,13 +286,10 @@ class UnitQuaternion : public EuclideanPoint<4> {
     auto & q_R = q[Calc::RIndex];
     auto q_I = Calc::getImagPart(q);
     auto & v = other.getValue();
-    return (q_R * q_R - q_I.dot(q_I)) * v + (2 * v.dot(q_I)) * q_I + (-2 * q_R) * (v.cross(q_I));
+    result = (q_R * q_R - q_I.dot(q_I)) * v + (2 * v.dot(q_I)) * q_I + (-2 * q_R) * (v.cross(q_I));
 
-
-//    EuclideanPoint<3> result;
 //    typedef double T;
 //    auto & q = getValue();
-//
 //    const T t2 =  q[Calc::RIndex] * q[Calc::IIndex];
 //    const T t3 =  q[Calc::RIndex] * q[Calc::JIndex];
 //    const T t4 =  q[Calc::RIndex] * q[Calc::KIndex];
@@ -255,8 +302,6 @@ class UnitQuaternion : public EuclideanPoint<4> {
 //    result[0] = T(2) * ((t8 + t1) * other[0] + (t6 - t4) * other[1] + (t3 + t7) * other[2]) + other[0];  // NOLINT
 //    result[1] = T(2) * ((t4 + t6) * other[0] + (t5 + t1) * other[1] + (t9 - t2) * other[2]) + other[1];  // NOLINT
 //    result[2] = T(2) * ((t7 - t3) * other[0] + (t2 + t9) * other[1] + (t5 + t8) * other[2]) + other[2];  // NOLINT
-//
-//    return result;
   }
 
   inline EuclideanPoint<3> evalInverseRotate(const EuclideanPoint<3> & other) const{
@@ -295,6 +340,9 @@ class UnitQuaternion : public EuclideanPoint<4> {
 
   bool operator == (const UnitQuaternion & other) const {
     return getValue() == other.getValue();
+  }
+  bool operator != (const UnitQuaternion & other) const {
+    return getValue() != other.getValue();
   }
 
   friend
@@ -339,6 +387,111 @@ struct OpMemberBase<UnitQuaternion, DERIVED> {
   }
 };
 
+template <>
+struct get_tangent_space<UnitQuaternion> { //TODO should default to nested type
+  typedef UnitQuaternion::TangentVector type;
+};
+
+template <unsigned diffIndex, unsigned basisIndex, typename A, typename Differential, typename Cache>
+inline void evalDiffCached(const AnyUnOp<UnitQuaternion, Inverse<A>> & anyExp, Differential & d, Cache & cache)
+{
+  auto & exp = anyExp.getExp();
+  auto & a = cache.accessValue(exp);
+  auto diff = createDiff([&d, &a](const UnitQuaternion::TangentVector & vector){ d.apply((a.rotate(-vector.getValue())).eval()); });
+  evalDiffCached<diffIndex, basisIndex>(exp.getA(), diff, cache.a);
 }
+
+template <unsigned diffIndex, unsigned basisIndex, typename A, typename B, typename Differential>
+inline void evalDiff(const AnyBinOp<UnitQuaternion, UnitQuaternion, Times<A, B>> & anyTimes, Differential & d)
+{
+  auto & times = anyTimes.getExp();
+  auto b = evalExp(times.getB());
+  evalDiff<diffIndex, basisIndex>(times.getA(), d);
+  auto diff = createDiff([&d, &b](const UnitQuaternion::TangentVector & vector){ d.apply(b.rotate(vector).eval()); });
+  evalDiff<diffIndex, basisIndex>(times.getB(), diff);
+}
+
+template <unsigned diffIndex, unsigned basisIndex, typename A, typename B, typename Differential, typename Cache>
+inline void evalDiffCached(const AnyBinOp<UnitQuaternion, UnitQuaternion, Times<A, B>> & anyTimes, Differential & d, Cache & cache)
+{
+  auto & times = anyTimes.getExp();
+  auto & b = cache.b.accessValue(times.getB());
+  evalDiff<diffIndex, basisIndex>(times.getA(), d);
+  auto diff = createDiff([&d, &b](const UnitQuaternion::TangentVector & vector){ d.apply(b.rotate(vector).eval()); });
+  evalDiffCached<diffIndex, basisIndex>(times.getB(), diff, cache.b);
+}
+
+
+/*
+ *
+//          auto pRotated = (Ref<UnitQuaternion>(qC12).rotate(Ref<EuclideanPoint<3>>(p2)) * Scalar<double>(0.5)).eval().getValue();
+//          for (int i : {0, 1, 2}) {
+//            auto & v = E[i];
+//            output.jP2.template block<2, 1>(0, i) = toEigen(getExp(qC12, v).eval());
+//            output.jPhi12.template block<2, 1>(0, i) = toEigen(v.cross(pRotated).template block<2, 1>(0, 0) * 2);
+//          }
+//        }
+ */
+
+
+//TODO optimize: create rotate diff struct optimized for basis vectors
+//template <unsigned diffIndex, unsigned basisIndex, typename A, typename B, typename Differential>
+//struct RotateDiff {
+//  template<unsigned BasisIndex>
+//  void apply(BasisVector.) {
+//
+//  }
+//};
+
+template <unsigned diffIndex, unsigned basisIndex, typename A, typename B, typename Differential>
+inline void evalDiff(const AnyBinOp<UnitQuaternion, EuclideanPoint<3>, Rotate<A, B, EuclideanPoint<3>>> & anyExp, Differential & d)
+{
+  auto & exp = anyExp.getExp();
+  const UnitQuaternion a = evalExp(exp.getA());
+  const EuclideanPoint<3> rotated = evalExp(exp);
+  {
+    auto diff = createDiff([&d, &rotated](const UnitQuaternion::TangentVector & vector){ d.apply(vector.cross(rotated) * 2); });
+    evalDiff<diffIndex, basisIndex>(exp.getA(), diff);
+  }
+  {
+    auto diff = createDiff([&d, &a](const EuclideanPoint<3> & vector){ d.apply(a.rotate(vector).eval()); });
+    evalDiff<diffIndex, basisIndex>(exp.getB(), diff);
+  }
+}
+
+template <unsigned diffIndex, unsigned basisIndex, typename A, typename B, typename Differential, typename Cache>
+inline void evalDiffCached(const AnyBinOp<UnitQuaternion, EuclideanPoint<3>, Rotate<A, B, EuclideanPoint<3>>> & anyExp, Differential & d, Cache &cache)
+{
+  auto & exp = anyExp.getExp();
+  const UnitQuaternion & a = cache.a.accessValue(exp.getA());
+  const EuclideanPoint<3> & rotated = cache.accessValue(exp);
+  {
+    auto diff = createDiff([&d, &rotated](const UnitQuaternion::TangentVector & vector){ d.apply(vector.cross(rotated) * 2); });
+    evalDiffCached<diffIndex, basisIndex>(exp.getA(), diff, cache.a);
+  }
+  {
+    auto diff = createDiff([&d, &a](const EuclideanPoint<3> & vector){ d.apply(a.rotate(vector).eval()); });
+    evalDiffCached<diffIndex, basisIndex>(exp.getB(), diff, cache.b);
+  }
+}
+
+template <unsigned diffIndex, unsigned basisIndex, typename A, typename B, typename Differential, typename Cache>
+inline void evalDiffCached(const AnyBinOp<UnitQuaternion, EuclideanPoint<3>, Rotate<Inverse<A>, B, EuclideanPoint<3>>> & anyExp, Differential & d, Cache &cache)
+{
+  auto & exp = anyExp.getExp();
+  const UnitQuaternion & a = cache.a.accessValue(exp.getA());
+  {
+    auto & b = cache.b.accessValue(exp.getB());
+    auto diff = createDiff([&d, &a, &b](const UnitQuaternion::TangentVector & vector){ d.apply((a.rotate(b.cross(vector)) * 2.0).eval()); });
+    evalDiffCached<diffIndex, basisIndex>(exp.getA().getA(), diff, cache.a.a);
+  }
+  {
+    auto diff = createDiff([&d, &a](const EuclideanPoint<3> & vector){ d.apply(a.rotate(vector).eval()); });
+    evalDiffCached<diffIndex, basisIndex>(exp.getB(), diff, cache.b);
+  }
+}
+
+
+} // namespace TEX_NAMESPACE
 
 #endif /* UNITQUATERNIONS_HPP_ */

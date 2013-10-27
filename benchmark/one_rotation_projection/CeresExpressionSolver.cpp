@@ -1,9 +1,9 @@
+#include <stdexcept>
 #include <ceres/ceres.h>
 #include <ceres/rotation.h>
 #include <ceres/local_parameterization.h>
 #include <benchmark/ProblemSolver.hpp>
 #include "ProjectionProblem.hpp"
-
 
 namespace one_rotation_projection_problem {
 

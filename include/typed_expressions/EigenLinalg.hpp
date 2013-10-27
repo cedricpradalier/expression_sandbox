@@ -8,6 +8,7 @@
 #ifndef EIGENLINALG_HPP_
 #define EIGENLINALG_HPP_
 
+#include <stdexcept>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
@@ -28,20 +29,21 @@ typedef int MatrixSize;
 template<typename T>
 struct MatrixConvertible {
   typedef const T &  type;
-  static inline type asMatrixConvertible(const T&t){
+  static inline type asMatrixConvertible(const T&t, MatrixSize size = -1){
     return t;
   }
 };
 
 template<typename T>
-inline typename MatrixConvertible<T>::type asMatrixConvertible(const T & t) {
-  return MatrixConvertible<T>::asMatrixConvertible(t);
+inline typename MatrixConvertible<T>::type asMatrixConvertible(const T & t, MatrixSize size = -1) {
+  return MatrixConvertible<T>::asMatrixConvertible(t, size);
 }
+
 
 template<>
 struct MatrixConvertible<std::initializer_list<double>> {
   typedef Eigen::VectorXd type;
-  static inline Eigen::VectorXd asMatrixConvertible(std::initializer_list<double> t, int size = -1){
+  static inline Eigen::VectorXd asMatrixConvertible(std::initializer_list<double> t, MatrixSize size = -1){
     if(size == -1) size = t.size();
     Eigen::VectorXd v(size);
     int i = 0;
@@ -52,6 +54,18 @@ struct MatrixConvertible<std::initializer_list<double>> {
     return v;
   }
 };
+
+template<>
+struct MatrixConvertible<std::function<double(MatrixSize i)>> {
+  typedef Eigen::VectorXd type;
+  static inline Eigen::VectorXd asMatrixConvertible(std::function<double(MatrixSize i)> f, MatrixSize size){
+    if(size < 0) throw std::runtime_error("size missing");
+    Eigen::VectorXd v(size);
+    for(int i = 0; i < size ; i++){v[i] = f(i);}
+    return v;
+  }
+};
+
 
 template <typename T>
 T & toEigen(T&t){

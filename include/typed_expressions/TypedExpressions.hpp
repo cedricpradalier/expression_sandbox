@@ -212,7 +212,7 @@ class GenericOp : public OpMemberBase<Space_, DERIVED>, public OpBase<Space_>, p
   constexpr static int Level = Level_;
   typedef Space_ Space;
 
-  inline Space_ eval() const {
+  inline auto eval() const -> decltype(evalExp(static_cast<const DERIVED&>(*this))){
     return evalExp(static_cast<const DERIVED&>(*this));
   }
 };
@@ -243,10 +243,36 @@ class GenericOp<Space_, DERIVED, 0> : public VOpBase<Space_> , public OpMemberBa
 };
 
 // **************** operators ****************
-template<typename A, typename Space_, typename DERIVED>
-class UnOpBase : public GenericOp<Space_, DERIVED, internal::getNextLevel<A>()> {
-  typedef GenericOp<Space_, DERIVED, internal::getNextLevel<A>()> Base;
+
+
+template <typename Exp>
+struct get_op {
+  typedef Exp type;
+};
+
+
+template <typename SpaceA_, typename ExpType_>
+struct AnyUnOp {
+  typedef AnyUnOp OP;
+  inline const ExpType_ & getExp() const { return static_cast<ExpType_ const &>(*this); }
+  inline ExpType_ & getExp() { return static_cast<ExpType_&>(*this); }
+  inline operator const ExpType_ & () const { return getExp(); }
+  inline operator ExpType_ & () { return getExp(); }
+};
+
+namespace internal {
+template <typename SpaceA_, typename ExpType_>
+  struct get_space<AnyUnOp<SpaceA_, ExpType_> >{
+   public:
+    typedef typename get_space<ExpType_>::type type;
+  };
+};
+
+template<typename A_, typename Space_, typename DERIVED>
+class UnOpBase : public GenericOp<Space_, DERIVED, internal::getNextLevel<A_>()>, public AnyUnOp<GET_SPACE(A_), DERIVED> {
  public:
+  typedef GenericOp<Space_, DERIVED, internal::getNextLevel<A_>()> Base;
+  typedef A_ A;
   const typename OperandStorage<A, Base::Level>::EvaluableType & getA() const { return a_; }
  protected:
   UnOpBase(const A & a) : a_(a) {}
@@ -256,16 +282,28 @@ class UnOpBase : public GenericOp<Space_, DERIVED, internal::getNextLevel<A>()> 
 
 template <typename SpaceA_, typename SpaceB_, typename ExpType_>
 struct AnyBinOp {
+  typedef AnyBinOp OP;
   inline const ExpType_ & getExp() const { return static_cast<ExpType_ const &>(*this); }
   inline ExpType_ & getExp() { return static_cast<ExpType_&>(*this); }
   inline operator const ExpType_ & () const { return getExp(); }
   inline operator ExpType_ & () { return getExp(); }
 };
 
-template<typename A, typename B, typename Space_, typename DERIVED>
-class BinOpBase : public GenericOp<Space_, DERIVED, internal::getNextLevel<A, B>()>, public AnyBinOp<GET_SPACE(A), GET_SPACE(B), DERIVED> {
+namespace internal {
+template <typename SpaceA_, typename SpaceB_, typename ExpType_>
+  struct get_space<AnyBinOp<SpaceA_, SpaceB_, ExpType_> >{
+   public:
+    typedef typename get_space<ExpType_>::type type;
+  };
+};
+
+template<typename A_, typename B_, typename Space_, typename DERIVED>
+class BinOpBase : public GenericOp<Space_, DERIVED, internal::getNextLevel<A_, B_>()>, public AnyBinOp<GET_SPACE(A_), GET_SPACE(B_), DERIVED> {
  public:
-  typedef GenericOp<Space_, DERIVED, internal::getNextLevel<A, B>()> Base;
+  typedef GenericOp<Space_, DERIVED, internal::getNextLevel<A_, B_>()> Base;
+  typedef A_ A;
+  typedef B_ B;
+
   constexpr static size_t DimA = get_dim<A>::value;
   constexpr static size_t DimB = get_dim<B>::value;
   constexpr static size_t DimResult = get_dim<Space_>::value;
@@ -598,7 +636,7 @@ class Ref : public OpMemberBase<Space, Ref<Space> > {
   }
 
   friend std::ostream & operator << (std::ostream & out, const Ref & ref) {
-    out << "$" << (*ref.s);
+    out << "&" << (ref.s);
     return out;
   }
  private:
@@ -619,6 +657,11 @@ struct OperandStorage<Ref<Space>, Level> {
   typedef const Space & EvaluableType;
 };
 
+template <typename Space>
+inline const Space & evalExp(const Ref<Space> & r){
+  return r;
+}
+
 template <typename Space, const Space& s_>
 class StaticRef : public OpMemberBase<Space, StaticRef<Space, s_> > {
  public:
@@ -634,6 +677,7 @@ class StaticRef : public OpMemberBase<Space, StaticRef<Space, s_> > {
     return out;
   }
 };
+
 
 namespace internal {
   template <typename Space, Space & s>
@@ -757,6 +801,117 @@ auto toExp(Any_ v) -> typename SWrapper<Any_>::WrappedType {
 #define SUPPORTS_USER_FUNCTION
 
 
+// **************** cache *******************
+
+
+template <typename A, typename Space_>
+struct get_op<Inverse<A, Space_>> {
+  typedef typename Inverse<A, Space_>::OP type;
+};
+
+template <typename A, typename B, typename Space_>
+struct get_op<Times<A, B, Space_>> {
+  typedef typename Times<A, B, Space_>::OP type;
+};
+
+template <typename A, typename B, typename Space_>
+struct get_op<Rotate<A, B, Space_>> {
+  typedef typename Rotate<A, B, Space_>::OP type;
+};
+
+
+template <typename Exp, typename Storage = typename get_space<Exp>::type>
+struct Cache {
+  inline void update(...) const { }
+  inline auto accessValue(const Exp & exp) const -> decltype(evalExp(exp)){
+    if(!std::is_reference<decltype(evalExp(exp))>::value ){
+      std::cout << "NotCached::exp=" << std::endl << exp << std::endl; // XXX: debug output of exp
+    }
+    return evalExp(exp);
+  }
+};
+
+template <typename Exp>
+struct Cache<Ref<Exp>> {
+  typedef typename get_space<Exp>::type Space;
+  void update(const Ref<Exp> & exp) const { }
+  const Space & accessValue(const Ref<Exp> & exp) const { return exp.eval();}
+};
+
+template <typename T>
+inline const T & evalExpCached(const T & t, ...){
+  return evalExp(t);
+}
+
+template <typename A, typename Exp, typename Storage>
+struct Cache<AnyUnOp<A, Exp>, Storage> {
+  typedef typename get_space<Exp>::type Space;
+  Cache() = default;
+  Cache(Storage value) : value(value) {}
+
+  void update(const Exp & exp) {
+    a.update(exp.getA());
+    value = evalExpCached(exp, *this);
+  }
+  const Space & accessValue(const Exp & exp) const { return value;}
+ public:
+  Cache<typename get_op<typename Exp::A>::type> a;
+ private:
+  Storage value;
+};
+
+
+template <typename A, typename B, typename Exp, typename Storage>
+struct Cache<AnyBinOp<A, B, Exp>, Storage> {
+  typedef typename get_space<Exp>::type Space;
+  Cache() = default;
+  Cache(Storage value) : value(value) {}
+
+  void update(const Exp & exp) {
+    a.update(exp.getA());
+    b.update(exp.getB());
+    value = evalExpCached(exp, *this);
+  }
+  const Space & accessValue(const Exp & exp) const { return value;}
+ public:
+  Cache<typename get_op<typename Exp::A>::type> a;
+  Cache<typename get_op<typename Exp::B>::type> b;
+ private:
+  Storage value;
+};
+
+template <typename Exp>
+inline Cache<typename get_op<Exp>::type> createCache(const Exp & exp){
+  return Cache<typename get_op<Exp>::type>();
+}
+
+template <typename Exp>
+inline Cache<typename get_op<Exp>::type> createCache(const Exp & exp, typename get_space<Exp>::type & result){
+  return Cache<typename get_op<Exp>::type, decltype(result)>(result);
+}
+
+
+template <typename A, typename Space_, typename Cache_>
+inline const Space_ evalExpCached(const Inverse<A, Space_> & r, const Cache_ & cache){
+  return cache.a.accessValue(r.getA()).evalInverse();
+}
+
+template <typename A, typename B, typename Space_, typename Cache_>
+inline const Space_ evalExpCached(const Rotate<A, B, Space_> & r, const Cache_ & cache){
+  return cache.a.accessValue(r.getA()).evalRotate(cache.b.accessValue(r.getB()));
+}
+
+template <typename A, typename B, typename Space_, typename Cache_>
+inline const Space_ evalExpCached(const Times<A, B, Space_> & r, const Cache_ & cache){
+  return cache.a.accessValue(r.getA()).evalTimes(cache.b.accessValue(r.getB()));
+}
+
+template <typename A, typename B, typename Space_, typename Cache_>
+inline const Space_ evalExpCached(const Plus<A, B, Space_> & r, const Cache_ & cache){
+  return cache.a.accessValue(r.getA()).evalPlus(cache.b.accessValue(r.getB()));
+}
+
+
 // **************** example spaces ****************
 class SimpleSpace {
  public:
@@ -817,8 +972,5 @@ class TemplatedSpace {
 } // namespace TEX_NAMESPACE
 
 namespace tex = TEX_NAMESPACE;
-
-#include "internal/Derivatives.hpp"
-
 
 #endif /* TYPEDEXPRESSIONS_HPP_ */

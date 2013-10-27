@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include <ceres/ceres.h>
 #include <ceres/rotation.h>
 #include <ceres/local_parameterization.h>

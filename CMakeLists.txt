@@ -55,25 +55,19 @@ add_executable(TestTypedExpresssions src/TestTypedExpressions.cpp)
 rosbuild_add_executable(benchmarker 
 	benchmark/malloc_count.c
 	benchmark/Benchmarker.cpp
-	benchmark/two_rotations_projection/ProjectionProblem.cpp
-	benchmark/two_rotations_projection/GeneratedExpressionSolver.cpp
-	benchmark/two_rotations_projection/CeresExpressionSolver.cpp
-	benchmark/two_rotations_projection/TypedExpressionSolverDepth10Eig.cpp
-	benchmark/two_rotations_projection/TypedExpressionSolverDepth1Eig.cpp
-	benchmark/two_rotations_projection/AslamExpressionSolver.cpp
-	benchmark/two_rotations_projection/TypedExpressionSolverDepth10Simp.cpp
-	benchmark/two_rotations_projection/TypedExpressionSolverDepth1Simp.cpp
+
 	benchmark/one_rotation_projection/ProjectionProblem.cpp
 	benchmark/one_rotation_projection/GeneratedExpressionSolver.cpp
-	benchmark/one_rotation_projection/CeresExpressionSolver.cpp
 	benchmark/one_rotation_projection/TypedExpressionSolverDepth10Eig.cpp
-	benchmark/one_rotation_projection/TypedExpressionSolverDepth1Eig.cpp
-	benchmark/one_rotation_projection/AslamExpressionSolver.cpp
-	benchmark/one_rotation_projection/TypedExpressionSolverDepth10Simp.cpp
-	benchmark/one_rotation_projection/TypedExpressionSolverDepth1Simp.cpp
+	benchmark/one_rotation_projection/CeresExpressionSolver.cpp
+	
+	benchmark/two_rotations_projection/GeneratedExpressionSolver.cpp
+	benchmark/two_rotations_projection/TypedExpressionSolverDepth10Eig.cpp
+	benchmark/two_rotations_projection/CeresExpressionSolver.cpp
 )
 target_link_libraries(benchmarker dl)
-#set_target_properties(benchmarker PROPERTIES COMPILE_FLAGS "-p")
+#set_target_properties(benchmarker PROPERTIES COMPILE_FLAGS "-finline-limit=10000000")
+target_link_libraries(benchmarker boost_program_options)
 
 
 #add_executable(test_exp src/test.cpp 
@@ -83,9 +77,16 @@ target_link_libraries(benchmarker dl)
 rosbuild_add_gtest(test_requirements
   test/requirements.cpp 
   test/TestTools.cpp
-  test/TestRotations.cpp
   test/test_main.cpp
 )
+
+rosbuild_add_gtest(test_expressions
+  test/TestTools.cpp
+  test/TestRotations.cpp
+  test/TestQuaternions.cpp
+  test/test_main.cpp
+)
+
 
 # rosbuild_add_executable(prepare_eigen_problem src/prepare_eigen_problem.cpp)
 # target_link_libraries(normalized_cut lapack blas)

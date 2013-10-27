@@ -114,8 +114,8 @@ void ProjectionProblem::calcSolutionInto(const Input & input, Output & output) {
     Vector<3>v(0, 0, 0); v[i] = 1;
     Input tmp = input;
     tmp.p3 = v;
-    output.jP3.template block<2, 1>(0, i) = calcRotation(tmp).template block<2, 1>(0, 0) * 0.5;
-    output.jPhi12.template block<2, 1>(0, i) = pRot.cross(qC21.rotate(v).eval().getValue()).template block<2, 1>(0, 0);
+    output.jP3.block<2, 1>(0, i) = calcRotation(tmp).block<2, 1>(0, 0) * 0.5;
+    output.jPhi12.block<2, 1>(0, i) = pRot.cross(qC21.rotate(v).eval().getValue()).block<2, 1>(0, 0);
   }
   output.jPhi23 = -output.jPhi12;
 }

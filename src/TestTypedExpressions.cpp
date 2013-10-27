@@ -40,7 +40,13 @@ struct MemberAccessor<B A::*, bp>  {
 
 #define MA(X) MemberAccessor<decltype(&X), &X>
 
-void testMemberAccessor() {
+template <int & i >
+struct TestRef {
+
+};
+
+int j = 0;
+void testMemberAccessor(int i = 0) {
   struct A{
     int b;
   } a{333};
@@ -52,6 +58,8 @@ void testMemberAccessor() {
 
   MA(A::b)().accessMember(a) = 444;
   std::cout << "a.b=" << std::endl << a.b << std::endl;
+
+  TestRef<j> x;
 }
 
 int main(int argc, char **argv) {

@@ -16,6 +16,14 @@ namespace projection_problem {
 
 namespace SOLVER {
 
+using namespace tex;
+
+template<typename A, typename B, typename C>
+inline auto getExp(A qC12, B qC23, C p3) -> decltype((rotate(inverse(qC12), rotate(qC23, p3)) * tex::Scalar<double>(0.5)).template segment<2>(0)){
+  return (rotate(inverse(qC12), rotate(qC23, p3)) * tex::Scalar<double>(0.5)).template segment<2>(0);
+}
+
+
 class TypedExpressionSolver : public benchmark::ProblemSolver<ProjectionProblem>{
  public:
   TypedExpressionSolver();
@@ -54,40 +62,48 @@ auto TypedExpressionSolver::createNewInstance(const ProjectionProblem::ConstInpu
     {
     }
 
-    inline auto getExp(Ref<UnitQuaternion> qC12, Ref<UnitQuaternion> qC23, Ref<EuclideanPoint<3>> p3) -> decltype(qC12.inverse().rotate(qC23.rotate(p3)) * Scalar<double>(0.5)){
-      return qC12.inverse().rotate(qC23.rotate(p3)) * Scalar<double>(0.5);
-    }
-
     virtual void solveInto(const TypedExpressionSolver::Problem::Input & input, TypedExpressionSolver::Problem::Output & output, const EvalVariants v) override {
 //      qC12.setStorage(reinterpret_cast<const UnitQuaternion*>(&input.qC12));
 //      qC23.setStorage(reinterpret_cast<const UnitQuaternion*>(&input.qC23));
 //      p3.setStorage(reinterpret_cast<const EuclideanPoint<3>*>(&input.p3));
 
-      auto qC12 = UnitQuaternion(reinterpret_cast<const UnitQuaternion&>(input.qC12));
-      auto qC23 = UnitQuaternion(reinterpret_cast<const UnitQuaternion&>(input.qC23));
-      auto p3 = EuclideanPoint<3>(reinterpret_cast<const EuclideanPoint<3>&>(input.p3));
+      auto qC12 = Diffable<Ref<UnitQuaternion>, 0>(reinterpret_cast<const UnitQuaternion&>(input.qC12));
+      auto qC23 = Diffable<Ref<UnitQuaternion>, 1>(reinterpret_cast<const UnitQuaternion&>(input.qC23));
+      auto p3 = Diffable<Ref<EuclideanPoint<3>>, 2>(reinterpret_cast<const EuclideanPoint<3>&>(input.p3));
       auto exp = getExp(qC12, qC23, p3);
 
-      auto pRotated = exp.eval().getValue();
 
       switch(v){
         case EvalVariants::Eval :{
-          output.xy = pRotated.block<2,1>(0, 0);
+//          output.xy = evalExp(exp);
+          auto cache = createCache(exp);
+          cache.update(exp);
+          output.xy = toEigen(cache.accessValue(exp));
         }
         break;
         case EvalVariants::EvalJacobian:
         {
-          UnitQuaternion qC21(inverse(qC12).eval());
+//          UnitQuaternion qC21(inverse(qC12).eval());
+//
+//          const static EuclideanPoint<3> E[3] = {{1., 0., 0.}, {0., 1., 0.}, {0., 0., 1.}};
+//
+//          for (int i : {0, 1, 2}) {
+//            auto & v = E[i];
+////            p3.setStorage(&v);
+//            output.jP3.block<2, 1>(0, i) = toEigen(getExp(qC12, qC23, v).eval().block<2, 1>(0, 0));
+//            output.jPhi12.block<2, 1>(0, i) = toEigen(pRotated.cross(qC21.rotate(v).eval().getValue()).block<2, 1>(0, 0) * 2);
+//            output.jPhi23.block<2, 1>(0, i) = toEigen(-pRotated.cross(qC21.rotate(v).eval().getValue()).block<2, 1>(0, 0) * 2);
+//          }
 
-          const static EuclideanPoint<3> E[3] = {{1., 0., 0.}, {0., 1., 0.}, {0., 0., 1.}};
+          auto cache = createCache(exp);
+          cache.update(exp);
+          output.jPhi12.setZero();
+          evalFullDiffIntoCached(exp, qC12, cache, output.jPhi12);
+          output.jPhi23.setZero();
+          evalFullDiffIntoCached(exp, qC23, cache, output.jPhi23);
+          output.jP3.setZero();
+          evalFullDiffIntoCached(exp, p3, cache, output.jP3);
 
-          for (int i : {0, 1, 2}) {
-            auto & v = E[i];
-//            p3.setStorage(&v);
-            output.jP3.template block<2, 1>(0, i) = toEigen(getExp(qC12, qC23, v).eval().template block<2, 1>(0, 0));
-            output.jPhi12.template block<2, 1>(0, i) = toEigen(pRotated.cross(qC21.rotate(v).eval().getValue()).template block<2, 1>(0, 0) * 2);
-            output.jPhi23.template block<2, 1>(0, i) = toEigen(-pRotated.cross(qC21.rotate(v).eval().getValue()).template block<2, 1>(0, 0) * 2);
-          }
         }
         break;
       }
