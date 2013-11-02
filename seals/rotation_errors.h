@@ -43,7 +43,7 @@ namespace cerise {
                 corrected_body_accel[1] = T(a_y);
                 corrected_body_accel[2] = T(a_z);
                 T p[3];
-                ceres::QuaternionRotatePoint(quaternion, corrected_body_accel, p);
+                ceres::UnitQuaternionRotatePoint(quaternion, corrected_body_accel, p);
 
                 // The error is the difference between the predicted and a position.
                 residuals[0] = T(weight)*(p[0] - T(G[0]));
@@ -86,7 +86,7 @@ namespace cerise {
                 corrected_body_mag[1] = T(m_y) * T(S[1]);
                 corrected_body_mag[2] = T(m_z) * T(S[2]);
                 T p[3];
-                ceres::QuaternionRotatePoint(quaternion, corrected_body_mag, p);
+                ceres::UnitQuaternionRotatePoint(quaternion, corrected_body_mag, p);
 
                 // The error is the difference between the predicted and a position.
                 residuals[0] = T(weight)*(p[0] - T(b_x));
