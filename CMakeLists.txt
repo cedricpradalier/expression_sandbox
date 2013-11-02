@@ -60,7 +60,8 @@ rosbuild_add_executable(benchmarker
 	benchmark/one_rotation_projection/GeneratedExpressionSolver.cpp
 	benchmark/one_rotation_projection/TypedExpressionSolverDepth10Eig.cpp
 	benchmark/one_rotation_projection/CeresExpressionSolver.cpp
-	
+
+	benchmark/two_rotations_projection/ProjectionProblem.cpp
 	benchmark/two_rotations_projection/GeneratedExpressionSolver.cpp
 	benchmark/two_rotations_projection/TypedExpressionSolverDepth10Eig.cpp
 	benchmark/two_rotations_projection/CeresExpressionSolver.cpp
@@ -99,10 +100,10 @@ rosbuild_add_gtest(test_expressions
 # LINK_DIRECTORIES(${CGNUPLOT}/lib)
 # SET(CGNUPLOT_LIBRARIES cgnuplot)
 
-#add_executable(optimise_rotations
-#    seals/optimise_rotations.cpp
-#    seals/rotation_errors.cpp
-#    seals/states.cpp
-#)
+rosbuild_add_executable(optimise_rotations
+    seals/optimise_rotations.cpp
+    seals/rotation_errors.cpp
+    seals/states.cpp
+)
 #target_link_libraries(optimise_rotations ${CERES_LIBRARIES} ${CGNUPLOT_LIBRARIES})
 
