@@ -101,7 +101,7 @@ namespace cerise{
                             &options->preconditioner_type));
                 CHECK(StringToSparseLinearAlgebraLibraryType(
                             FLAGS_sparse_linear_algebra_library,
-                            &options->sparse_linear_algebra_library));
+                            &options->sparse_linear_algebra_library_type));
                 options->num_linear_solver_threads = FLAGS_num_threads;
             }
 
