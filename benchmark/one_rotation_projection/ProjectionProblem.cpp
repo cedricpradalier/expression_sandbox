@@ -55,6 +55,8 @@ auto ProjectionProblem::createInstance() const -> InstancePtr {
       std::cout << "xyNorm=" << std::endl << xyNorm << std::endl;
       std::cout << "jPhi12ErrorNorm=" << std::endl << jPhi12ErrorNorm << std::endl;
       std::cout << "jP2ErrorNorm=" << std::endl << jP2ErrorNorm << std::endl;
+      std::cout << "solution.xy=" << std::endl << solution.xy << std::endl;
+      std::cout << "output.xy=" << std::endl << output.xy << std::endl;
       std::cout << "solution.jPhi12=" << std::endl << solution.jPhi12 << std::endl;
       std::cout << "output.jPhi12=" << std::endl << output.jPhi12 << std::endl;
       std::cout << "solution.jP2=" << std::endl << solution.jP2 << std::endl;

@@ -321,7 +321,7 @@ class BinOpBase : public GenericOp<Space_, DERIVED, internal::getNextLevel<A_, B
 
 #define RESULT_SPACE_GLOBAL(METHOD, TYPE_A, TYPE_B) decltype(METHOD(*static_cast<typename get_space<TYPE_A>::type*>(nullptr), *static_cast<typename get_space<TYPE_B>::type*>(nullptr)))
 
-template <typename A, typename B, typename Space_ = RESULT_SPACE(evalSum, A, B)>
+template <typename A, typename B, typename Space_ = RESULT_SPACE(evalPlus, A, B)>
 class Plus : public BinOpBase<A, B, Space_, Plus<A, B, Space_> >{
  public:
   typedef BinOpBase<A, B, Space_, Plus<A, B, Space_> > Base;
@@ -330,7 +330,7 @@ class Plus : public BinOpBase<A, B, Space_, Plus<A, B, Space_> >{
   Plus(const A & a, const B & b) : Base(a, b){}
 
   const Space evalImpl() const {
-    return evalExp(this->getA()).evalSum(evalExp(this->getB()));
+    return evalExp(this->getA()).evalPlus(evalExp(this->getB()));
   }
 
   friend
@@ -343,6 +343,30 @@ template <typename A, typename B, typename Result = Plus<A, B> >
 inline typename Result::App operator + (const A & a, const B & b){
   return Result(a, b);
 }
+
+template <typename A, typename B, typename Space_ = RESULT_SPACE(evalMinus, A, B)>
+class Minus : public BinOpBase<A, B, Space_, Minus<A, B, Space_> >{
+ public:
+  typedef BinOpBase<A, B, Space_, Minus<A, B, Space_> > Base;
+  typedef Space_ Space;
+
+  Minus(const A & a, const B & b) : Base(a, b){}
+
+  const Space evalImpl() const {
+    return evalExp(this->getA()).evalMinus(evalExp(this->getB()));
+  }
+
+  friend
+  std::ostream & operator << (std::ostream & out, const Minus & sum) {
+    return out << "(" << sum.getA() << " - " << sum.getB() << ")";
+  }
+};
+
+template <typename A, typename B, typename Result = Minus<A, B> >
+inline typename Result::App operator - (const A & a, const B & b){
+  return Result(a, b);
+}
+
 
 /* TODO remove the space template parameter
 #define RESULT_SP(Op, A, B) typename ResultBinOp<Op,A,B>::type
@@ -382,15 +406,34 @@ class Times : public BinOpBase<A, B, Space_, Times<A, B, Space_> >{
   }
 };
 
-//template <typename A, typename B, typename Space_>
-//auto evalDiff(const Times<A, B, Space_> & times, const Vector<Times<A, B, Space_>::DimA> & tA, const Vector<Times<A, B, Space_>::DimB> & tB) const -> Vector<Times<A, B, Space_>::DimResult>{
-//  return times.getA().eval().evalTimesDiff(tA, times.getB().eval(), tB);
-//}
-
 template <typename A, typename B, typename Result = Times<A, B> >
 inline typename Result::App operator * (const A & a, const B & b){
   return Result(a, b);
 }
+
+template <typename A, typename B, typename Space_ = RESULT_SPACE(evalCoeffwiseTimes, A, B)>
+class CoeffwiseTimes : public BinOpBase<A, B, Space_, CoeffwiseTimes<A, B, Space_> >{
+ public:
+  typedef BinOpBase<A, B, Space_, CoeffwiseTimes<A, B, Space_> > Base;
+  typedef Space_ Space;
+
+  CoeffwiseTimes(const A & a, const B & b) : Base(a, b){}
+
+  inline const Space evalImpl() const {
+    return evalExp(this->getA()).evalCoeffwiseTimes(evalExp(this->getB()));
+  }
+
+  friend
+  std::ostream & operator << (std::ostream & out, const CoeffwiseTimes & op) {
+    return out << "(" << op.getA() << " * " << op.getB() << ")";
+  }
+};
+
+template <typename A, typename B, typename Result = CoeffwiseTimes<A, B> >
+inline typename Result::App operator && (const A & a, const B & b){
+  return Result(a, b);
+}
+
 
 template <typename A, typename B, typename Space_ = RESULT_SPACE(evalRotate, A, B)>
 class Rotate : public BinOpBase<A, B, Space_, Rotate<A, B, Space_> > {
@@ -503,7 +546,17 @@ namespace internal {
     typedef Space type;
   };
   template <typename A, typename B, typename Space>
+  struct get_space<Minus<A, B, Space >>{
+   public:
+    typedef Space type;
+  };
+  template <typename A, typename B, typename Space>
   struct get_space<Times<A, B, Space >>{
+   public:
+    typedef Space type;
+  };
+  template <typename A, typename B, typename Space>
+  struct get_space<CoeffwiseTimes<A, B, Space >>{
    public:
     typedef Space type;
   };
@@ -621,7 +674,7 @@ struct OperandStorage<ExtVariable<Space>, Level> {
 };
 
 template <typename Space>
-class Ref : public OpMemberBase<Space, Ref<Space> > {
+class Ref : public OpMemberBase<Space, Ref<Space> >, public AnyExp<Space, Ref<Space> > {
  public:
   constexpr static int Level = internal::getLevel<Space>();
 
@@ -813,16 +866,28 @@ template <typename A, typename B, typename Space_>
 struct get_op<Times<A, B, Space_>> {
   typedef typename Times<A, B, Space_>::OP type;
 };
+template <typename A, typename B, typename Space_>
+struct get_op<CoeffwiseTimes<A, B, Space_>> {
+  typedef typename CoeffwiseTimes<A, B, Space_>::OP type;
+};
 
 template <typename A, typename B, typename Space_>
 struct get_op<Rotate<A, B, Space_>> {
   typedef typename Rotate<A, B, Space_>::OP type;
 };
+template <typename A, typename B, typename Space_>
+struct get_op<Plus<A, B, Space_>> {
+  typedef typename Plus<A, B, Space_>::OP type;
+};
 
+template <typename A, typename B, typename Space_>
+struct get_op<Minus<A, B, Space_>> {
+  typedef typename Minus<A, B, Space_>::OP type;
+};
 
 template <typename Exp, typename Storage = typename get_space<Exp>::type>
 struct Cache {
-  inline void update(...) const { }
+  inline void update(const Exp &) const { }
   inline auto accessValue(const Exp & exp) const -> decltype(evalExp(exp)){
     if(!std::is_reference<decltype(evalExp(exp))>::value ){
       std::cout << "NotCached::exp=" << std::endl << exp << std::endl; // XXX: debug output of exp
@@ -886,9 +951,10 @@ inline Cache<typename get_op<Exp>::type> createCache(const Exp & exp){
 }
 
 template <typename Exp>
-inline Cache<typename get_op<Exp>::type> createCache(const Exp & exp, typename get_space<Exp>::type & result){
+inline auto createCache(const Exp & exp, typename get_space<Exp>::type & result) -> Cache<typename get_op<Exp>::type, decltype(result)>{
   return Cache<typename get_op<Exp>::type, decltype(result)>(result);
 }
+
 
 
 template <typename A, typename Space_, typename Cache_>
@@ -905,10 +971,18 @@ template <typename A, typename B, typename Space_, typename Cache_>
 inline const Space_ evalExpCached(const Times<A, B, Space_> & r, const Cache_ & cache){
   return cache.a.accessValue(r.getA()).evalTimes(cache.b.accessValue(r.getB()));
 }
+template <typename A, typename B, typename Space_, typename Cache_>
+inline const Space_ evalExpCached(const CoeffwiseTimes<A, B, Space_> & r, const Cache_ & cache){
+  return cache.a.accessValue(r.getA()).evalCoeffwiseTimes(cache.b.accessValue(r.getB()));
+}
 
 template <typename A, typename B, typename Space_, typename Cache_>
 inline const Space_ evalExpCached(const Plus<A, B, Space_> & r, const Cache_ & cache){
   return cache.a.accessValue(r.getA()).evalPlus(cache.b.accessValue(r.getB()));
+}
+template <typename A, typename B, typename Space_, typename Cache_>
+inline const Space_ evalExpCached(const Minus<A, B, Space_> & r, const Cache_ & cache){
+  return cache.a.accessValue(r.getA()).evalMinus(cache.b.accessValue(r.getB()));
 }
 
 
@@ -917,7 +991,7 @@ class SimpleSpace {
  public:
   SimpleSpace(int v = 0) : value(v){}
 
-  SimpleSpace evalSum(const SimpleSpace & other) const {
+  SimpleSpace evalPlus(const SimpleSpace & other) const {
     return SimpleSpace(value + other.value);
   }
 
@@ -952,7 +1026,7 @@ class TemplatedSpace {
     for(int d : entries) { value[i++] = d; }
     for(; i < Dimension; i ++) { value[i] = 0; }
   }
-  TemplatedSpace evalSum (const TemplatedSpace & other) const {
+  TemplatedSpace evalPlus (const TemplatedSpace & other) const {
     TemplatedSpace r;
     for(int i = 0; i < Dimension; i ++) { r.value[i] = value[i] + other.value[i]; }
     return r;

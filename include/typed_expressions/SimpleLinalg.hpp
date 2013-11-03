@@ -145,9 +145,25 @@ class Matrix : public internal::Storage<Scalar_, Rows_, Cols_, IsMap>, public Ma
   Matrix(std::initializer_list<Scalar> entries){
     if(entries.size() > Size) throw std::runtime_error("too many initializing entries");
     size_t i = 0;
-    for(double d : entries) { (*this)[i++] = d; }
+    for(Scalar d : entries) { (*this)[i++] = d; }
     for(; i < Size; i ++) { (*this)[i] = 0; }
   }
+
+  Matrix(std::initializer_list<std::initializer_list<Scalar>> entries){
+    if(entries.size() > Rows) throw std::runtime_error("too many initializing entries");
+    size_t i = 0;
+    for(auto & l : entries) {
+      size_t j = 0;
+      if(l.size() > Cols) throw std::runtime_error("too many initializing entries");
+      for(Scalar d : l) {
+        (*this)(i, j) = d;
+        j++;
+      }
+      for(size_t end = l.size(); j < end; j ++) { (*this)(i, j) = 0; }
+      i++;
+    }
+  }
+
 
   Scalar_ & operator()(size_t i, size_t j) {
     return Storage::accessEntry(i, j);
@@ -188,6 +204,11 @@ class Matrix : public internal::Storage<Scalar_, Rows_, Cols_, IsMap>, public Ma
   template <bool OtherIsMap>
   NonMapMatrix operator + (const Matrix<Scalar, Rows, Cols, OtherIsMap> & other) const {
     return NonMapMatrix([&other, this](size_t i, size_t j) { return (*this)(i, j) + other(i, j); });
+  }
+
+  template <bool OtherIsMap>
+  NonMapMatrix operator - (const Matrix<Scalar, Rows, Cols, OtherIsMap> & other) const {
+    return NonMapMatrix([&other, this](size_t i, size_t j) { return (*this)(i, j) - other(i, j); });
   }
 
   template <size_t OtherCols, bool OtherIsMap>
@@ -339,6 +360,19 @@ struct MatrixConvertible<std::initializer_list<double>> {
     return t;
   }
 };
+
+template<>
+struct MatrixConvertible<std::initializer_list<std::initializer_list<double>>> {
+  typedef std::initializer_list<std::initializer_list<double>> type;
+  static inline type asMatrixConvertible(std::initializer_list<std::initializer_list<double>> t, MatrixSize size = -1){
+    return t;
+  }
+};
+
+inline typename MatrixConvertible<std::initializer_list<std::initializer_list<double>>>::type asMatrixConvertible(std::initializer_list<std::initializer_list<double>> t) {
+  return MatrixConvertible<std::initializer_list<std::initializer_list<double>>>::asMatrixConvertible(t);
+}
+
 
 }
 

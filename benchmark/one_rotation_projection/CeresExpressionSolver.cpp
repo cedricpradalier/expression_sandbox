@@ -10,6 +10,7 @@ namespace one_rotation_projection_problem {
 namespace ceres_solver {
 using namespace ceres;
 
+
 struct TestErrorQuat {
     template <typename T>
         bool operator()(const T* const q_1_2,
@@ -38,11 +39,13 @@ class CeresExpressionSolver : public benchmark::ProblemSolver<ProjectionProblem>
   virtual InstancePtr createNewInstance(const ProjectionProblem::ConstInput & constInput) const;
 
   virtual ~CeresExpressionSolver() {};
+
 };
 
 CeresExpressionSolver::InstancePtr CeresExpressionSolver::createNewInstance(const ProjectionProblem::ConstInput & constInput) const{
   struct Instance : public CeresExpressionSolver::Instance {
     AutoDiffCostFunction<TestErrorQuat,2,4,3> exp;
+    ceres::QuaternionParameterization parametrization;
 
     Instance(const Problem::ConstInput& constInput) :
       exp(new TestErrorQuat())
@@ -73,7 +76,7 @@ CeresExpressionSolver::InstancePtr CeresExpressionSolver::createNewInstance(cons
     #endif
 
           double localParamJac[4 * 3];
-          ceres::QuaternionParameterization().ComputeJacobian(q_1_2, localParamJac);
+          parametrization.ComputeJacobian(q_1_2, localParamJac);
           /* this is slower than the line below and uses Eigen anyway. (slower is the extra copy to adapt column major to row major)
           double jac[2 * 3];
           ceres::internal::MatrixMatrixMultiply<2, 4, 4, 3, 0>(

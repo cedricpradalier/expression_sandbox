@@ -11,6 +11,7 @@
 
 #include <initializer_list>
 #include <iostream>
+#include <cstdlib>
 
 #include "TypedExpressions.hpp"
 #include "SimpleLinalg.hpp" //TODO discuss: how to do this
@@ -23,12 +24,31 @@ namespace TEX_NAMESPACE {
 using namespace linalg;
 
 template <typename PrimScalar_>
-class Scalar {
+class Scalar{
  public:
+  constexpr static MatrixSize Dimension = 1;
   Scalar(PrimScalar_ v = 0) : value_(v){}
 
-  Scalar evalSum(const Scalar & other) const {
+  Scalar evalPlus(const Scalar & other) const {
     return Scalar(value_ + other.value_);
+  }
+
+  Scalar evalMinus(const Scalar & other) const {
+    return Scalar(value_ - other.value_);
+  }
+
+  Scalar evalTimes(const Scalar & other) const {
+    return Scalar(value_ * other.value_);
+  }
+
+  template <unsigned BasisIndex>
+  static Scalar getBasisVector() {
+//    static_assert(BasisIndex < (unsigned) Dimension, "");
+    return Scalar(PrimScalar_(1));
+  }
+
+  operator const Matrix<PrimScalar_, 1, 1> & () const {
+    return reinterpret_cast<const Matrix<PrimScalar_, 1, 1> &>(*this);
   }
 
   friend
@@ -50,6 +70,44 @@ class Scalar {
  private:
   PrimScalar_ value_;
 };
+
+template <unsigned diffIndex, unsigned basisIndex, typename PrimScalar_, typename A, typename B, typename Differential, typename Cache>
+inline void evalDiffCached(const AnyBinOp<Scalar<PrimScalar_>, Scalar<PrimScalar_>, Times<A, B, Scalar<PrimScalar_> > > & anyExp, Differential & d, Cache & cache)
+{
+  auto & exp = anyExp.getExp();
+
+  auto && a = cache.a.accessValue(exp.getA());
+  auto && b = cache.b.accessValue(exp.getB());
+  {
+    auto diff = createDiff([&d, &b](const Scalar<PrimScalar_> & scalarTangentVector){ d.apply((scalarTangentVector * b).eval()); });
+    evalDiffCached<diffIndex, basisIndex>(exp.getA(), diff, cache.a);
+  }
+  {
+    auto diff = createDiff([&d, &a](const Scalar<PrimScalar_> & scalarTangentVector){ d.apply((a * scalarTangentVector).eval()); });
+    evalDiffCached<diffIndex, basisIndex>(exp.getB(), diff, cache.b);
+  }
+}
+
+template <unsigned diffIndex, unsigned basisIndex, typename PrimScalar_, typename A, typename B, typename Differential, typename Cache>
+inline void evalDiffCached(const AnyBinOp<Scalar<PrimScalar_>, Scalar<PrimScalar_>, Minus<A, B, Scalar<PrimScalar_> > > & anyExp, Differential & d, Cache & cache)
+{
+  auto & exp = anyExp.getExp();
+  {
+    evalDiffCached<diffIndex, basisIndex>(exp.getA(), d, cache.a);
+  }
+  {
+    auto diff = createDiff([&d](const Scalar<PrimScalar_> & scalarTangentVector){ d.apply(-scalarTangentVector); });
+    evalDiffCached<diffIndex, basisIndex>(exp.getB(), diff, cache.b);
+  }
+}
+template <unsigned diffIndex, unsigned basisIndex, typename PrimScalar_, typename A, typename B, typename Differential, typename Cache>
+inline void evalDiffCached(const AnyBinOp<Scalar<PrimScalar_>, Scalar<PrimScalar_>, Plus<A, B, Scalar<PrimScalar_> > > & anyExp, Differential & d, Cache & cache)
+{
+  auto & exp = anyExp.getExp();
+  evalDiffCached<diffIndex, basisIndex>(exp.getA(), d, cache.a);
+  evalDiffCached<diffIndex, basisIndex>(exp.getB(), d, cache.b);
+}
+
 
 
 template <typename A, typename B, typename Space_ = RESULT_SPACE(evalDot, A, B)>
@@ -141,8 +199,17 @@ class EuclideanPoint : public Vector<Dim_> {
     return EuclideanPoint(getValue() * other.getValue());
   }
 
-  inline EuclideanPoint evalSum(const EuclideanPoint & other) const {
+  inline EuclideanPoint evalCoeffwiseTimes(const EuclideanPoint & other) const {
+    return EuclideanPoint(getValue().array() * other.getValue().array());
+  }
+
+
+  inline EuclideanPoint evalPlus(const EuclideanPoint & other) const {
     return getValue() + other.getValue();
+  }
+
+  inline EuclideanPoint evalMinus(const EuclideanPoint & other) const {
+    return getValue() - other.getValue();
   }
 
   inline ScalarSpace evalDot(const EuclideanPoint & other) const {
@@ -189,6 +256,11 @@ class EuclideanPoint : public Vector<Dim_> {
   static const EuclideanPointBasisVector<Dimension, BasisIndex> & getBasisVector(){
     return EuclideanPointBasisVector<Dimension, BasisIndex>::getInstance();
   }
+
+  void setRandom() {
+    for(MatrixSize i = 0; i < Dimension; i++)
+      (*this)[i] = drand48();
+  }
 };
 
 template<MatrixSize Dim, unsigned BasisIndex>
@@ -200,6 +272,20 @@ struct EuclideanPointBasisVector : public EuclideanPoint<Dim> {
  private:
   EuclideanPointBasisVector() : EuclideanPoint<Dim>(MatrixConvertible<std::function<double(MatrixSize i)>>::asMatrixConvertible([](MatrixSize i)->double { return i == BasisIndex ? 1.0 : 0.0;}, Dim)){}
 };
+
+//TODO this should not be necessary
+namespace internal {
+template<MatrixSize Dim, unsigned BasisIndex>
+struct get_space<EuclideanPointBasisVector<Dim, BasisIndex>>{
+ public:
+  typedef EuclideanPoint<Dim> type;
+};
+}
+
+template <unsigned EvalDiffIndex, unsigned BasisIndex, typename Differential, typename Cache, MatrixSize Dim, unsigned BasisIndex2>
+void evalDiffCached(const EuclideanPointBasisVector<Dim, BasisIndex2> &, Differential & differential, Cache &) {
+}
+
 
 
 //template<MatrixSize Dimension>
@@ -221,6 +307,20 @@ struct OpMemberBase<EuclideanPoint<Dim_>, DERIVED> {
     return Ret(static_cast<const DERIVED&>(*this), startIndex);
   }
 };
+
+//TODO fix opposite multiplication
+/*
+template <MatrixSize dim, typename A, typename B>
+inline auto operator * (const AnyExp<Scalar<double>, A> & s, const AnyExp<EuclideanPoint<dim>, B > & p) -> decltype (p.getExp()*s.getExp()) {
+  return p.getExp()*s.getExp();
+}
+
+template <MatrixSize dim, typename A>
+inline auto operator * (const Scalar<double> & s, const AnyExp<EuclideanPoint<dim>, A > & p) -> decltype (p.getExp()*s) {
+  return p.getExp()*s;
+}
+*/
+
 
 template <typename A, MatrixSize SegmentSize>
 inline const auto evalExp(const Segment<A, SegmentSize, EuclideanPoint<SegmentSize>> & r) -> decltype(evalExp(r.getA()).template evalSegment<SegmentSize>(r.getB())){
@@ -250,6 +350,24 @@ struct Cache<Segment<A, SegmentSize, EuclideanPoint<SegmentSize>>> {
 template <typename A, MatrixSize SegmentSize, typename Cache_>
 inline const EuclideanPoint<SegmentSize> evalExpCached(const Segment<A, SegmentSize, EuclideanPoint<SegmentSize>> & r, Cache_ & cache){
   return cache.a.accessValue(r.getA()).template evalSegment<SegmentSize>(r.getB());
+}
+
+template <unsigned diffIndex, unsigned basisIndex, MatrixSize Dim_, typename A, typename B, typename Differential, typename Cache>
+inline void evalDiffCached(const AnyBinOp<EuclideanPoint<Dim_>, EuclideanPoint<Dim_>, Plus<A, B, EuclideanPoint<Dim_> > > & anyExp, Differential & d, Cache & cache)
+{
+  auto & exp = anyExp.getExp();
+  evalDiffCached<diffIndex, basisIndex>(exp.getA(), d, cache.a);
+  evalDiffCached<diffIndex, basisIndex>(exp.getB(), d, cache.b);
+}
+
+template <unsigned diffIndex, unsigned basisIndex, MatrixSize Dim_, typename A, typename B, typename Differential, typename Cache>
+inline void evalDiffCached(const AnyBinOp<EuclideanPoint<Dim_>, EuclideanPoint<Dim_>, Minus<A, B, EuclideanPoint<Dim_> > > & anyExp, Differential & d, Cache & cache)
+{
+  auto & exp = anyExp.getExp();
+  typedef EuclideanPoint<Dim_> TangentVector;
+  evalDiffCached<diffIndex, basisIndex>(exp.getA(), d, cache.a);
+  auto diff = createDiff([&d](const TangentVector & v){ d.apply((-v).eval()); });
+  evalDiffCached<diffIndex, basisIndex>(exp.getB(), diff, cache.b);
 }
 
 
@@ -291,6 +409,24 @@ inline void evalDiffCached(const AnyBinOp<EuclideanPoint<Dim_>, typename Euclide
   }
 }
 
+template <unsigned diffIndex, unsigned basisIndex, MatrixSize Dim_, typename A, typename B, typename Differential, typename Cache>
+inline void evalDiffCached(const AnyBinOp<EuclideanPoint<Dim_>, EuclideanPoint<Dim_>, CoeffwiseTimes<A, B, EuclideanPoint<Dim_> > > & anyExp, Differential & d, Cache & cache)
+{
+  auto & exp = anyExp.getExp();
+  typedef EuclideanPoint<Dim_> TangentVector;
+  typedef typename EuclideanPoint<Dim_>::ScalarSpace Scalar;
+
+  auto && a = cache.a.accessValue(exp.getA());
+  auto && b = cache.b.accessValue(exp.getB());
+  {
+    auto diff = createDiff([&d, & b](const TangentVector & v){ d.apply((v && b).eval()); });
+    evalDiffCached<diffIndex, basisIndex>(exp.getA(), diff, cache.a);
+  }
+  {
+    auto diff = createDiff([&d, & a](const TangentVector & v){ d.apply((a && v).eval()); });
+    evalDiffCached<diffIndex, basisIndex>(exp.getB(), diff, cache.b);
+  }
+}
 
 template <unsigned diffIndex, unsigned basisIndex, MatrixSize Dim_, typename A, MatrixSize SegmentSize, typename Differential>
 inline void evalDiff(const AnyBinOp<EuclideanPoint<Dim_>, MatrixSize, Segment<A, SegmentSize, EuclideanPoint<SegmentSize> > > & anyExp, Differential & d)

@@ -85,6 +85,7 @@ rosbuild_add_gtest(test_expressions
   test/TestTools.cpp
   test/TestRotations.cpp
   test/TestQuaternions.cpp
+  test/TestEuclideanPointsAndScalars.cpp
   test/test_main.cpp
 )
 

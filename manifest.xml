@@ -9,8 +9,7 @@
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/crystals</url>
   <depend package="roscpp"/>
-  <depend package="cgnuplot"/>
-  <!-- <depend package="eigen"/> -->
+  <depend package="eigen"/>
   <depend package="aslam_backend"/>
   <depend package="aslam_backend_expressions"/>
   <depend package="ceres"/>

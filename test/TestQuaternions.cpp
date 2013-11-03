@@ -14,7 +14,7 @@
 
 using namespace tex;
 
-EuclideanSpace<3>::Point x{1, 0}, y{0, 1}, z{0, 0, 1};
+EuclideanSpace<3>::Point x{1., 0}, y{0., 1}, z{0., 0, 1};
 auto & i = UnitQuaternion::getI();
 auto & j = UnitQuaternion::getJ();
 auto & k = UnitQuaternion::getK();
@@ -53,10 +53,7 @@ TEST(Quaternion, Derivatives){
   Matrix<double, 2,3> m;
   m.setZero();
   m.block<2,1>(0,1)(1, 0) = 1;
-  ASSERT_EQ(decltype(m)({0.0, 0, 0, 0, 1, 0}), m);
-
-
-
+  ASSERT_EQ(decltype(m)(asMatrixConvertible({{0, 0, 0}, {0, 1, 0}})), m);
 
   {
     diff.reset();
@@ -76,27 +73,33 @@ TEST(Quaternion, Derivatives){
 
     //  evalDiff<0, 0>(U, diff);
     evalDiffCached<0, 0>(U, diff, cache);
-    ASSERT_EQ(dest, Vector<3>({1, 0, 0}));
+    ASSERT_EQ(dest, Vector<3>({1., 0, 0}));
 
     diff.reset();
     evalDiffCached<1, 0>(U, diff, cache);
-    ASSERT_EQ(dest, Vector<3>({0, 0, 0}));
+    ASSERT_EQ(dest, Vector<3>({0., 0, 0}));
 
     diff.reset();
     evalDiffCached<0, 1>(U, diff, cache);
-    ASSERT_EQ(dest, Vector<3>({0, 1, 0}));
+    ASSERT_EQ(dest, Vector<3>({0., 1, 0}));
 
     diff.reset();
     evalDiffCached<0, 2>(U, diff, cache);
     ASSERT_EQ(dest, Vector<3>({0, 0, 1}));
 
-
-
     auto J = evalFullDiffCached(U, U, cache);
-    ASSERT_EQ(decltype(J)({
-      1, 0, 0,
-      0, 1, 0,
-      0, 0, 1}), J);
+    ASSERT_EQ(decltype(J)(asMatrixConvertible({
+      {1, 0, 0},
+      {0, 1, 0},
+      {0, 0, 1}})), J);
+
+  }
+  {
+    auto J = evalFullDiffCached(rotate(U, y) - x, U);
+    ASSERT_EQ(decltype(J)(asMatrixConvertible({
+       {0, 0, 2},
+       {0, 0, 0},
+      {-2, 0, 0}})), J);
   }
 
   {
@@ -105,10 +108,32 @@ TEST(Quaternion, Derivatives){
     cache.update(exp);
 
     auto J = evalFullDiffCached(exp, U, cache);
-    ASSERT_EQ(decltype(J)({
-      2, 0, 0,
-      0, 0, 0,
-      0, 0, 0}), J); //TODO verify
+    ASSERT_EQ(decltype(J)(asMatrixConvertible({
+      {2, 0, 0},
+      {0, 0, 0},
+      {0, 0, 0}})), J); //TODO verify
   }
+
+  {
+
+    EuclideanPoint<3> a{1, 0, 0}, g{1, 0, 0};
+
+    UnitQuaternion q(UnitQuaternion::getIdentity());
+    Diffable<Ref<UnitQuaternion>, 0> quaternion(q);
+    Scalar<double> one = 2;
+    Diffable<Ref<Scalar<double>>, 1> propulsion(one);
+
+    auto corrected_body_accel = a - (Ref<EuclideanPoint<3>>(EuclideanPoint<3>::getBasisVector<0>()) * propulsion);
+
+    double weight = 100;
+    // The error is the difference between the predicted and a position.
+    auto exp = (rotate(quaternion, corrected_body_accel) - g) * Scalar<double>(weight);
+    std::cout << "exp=" << exp  << "=" << evalExp(exp) << std::endl; // XXX: debug output of exp
+
+    std::cout << "evalFullDiffCached(exp, quaternion)=" << evalFullDiffCached(exp, quaternion) << std::endl; // XXX: debug output of evalFullDiffCached(exp)
+    std::cout << "evalFullDiffCached(exp, propulsion)=" << evalFullDiffCached(exp, propulsion) << std::endl; // XXX: debug output of evalFullDiffCached(exp)
+
+  }
+
 }
 

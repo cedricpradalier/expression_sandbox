@@ -1,5 +1,5 @@
 
-
+#include <type_traits>
 #include <stdlib.h>
 #include <stdio.h>
 #ifdef HAS_CGNUPLOT
@@ -8,7 +8,15 @@
 #include "ceres/ceres.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
+
+//#define USE_CERES_AD 1
+//#define CHECK_WITH_CERES_AD 1
+
+#if USE_CERES_AD
 #include "rotation_errors.h"
+#else
+#include "rotation_errors_tex.h"
+#endif
 #include "states.h"
 
 DEFINE_string(input, "", "Input File name");
@@ -62,8 +70,123 @@ DEFINE_bool(mag,false,"Estimate the magnetic field vector");
 DEFINE_string(solver_log, "", "File to record the solver execution to.");
 
 
-
 using namespace ceres;
+
+#if CHECK_WITH_CERES_AD
+template <typename TCostFunctionA>
+struct ComparingCostFunction : public CostFunction {
+
+  ComparingCostFunction(TCostFunctionA * a, CostFunction * b) : a(a), b(b){
+    set_num_residuals(a->num_residuals());
+    CHECK_EQ(num_residuals(), b->num_residuals());
+    *mutable_parameter_block_sizes() = a->parameter_block_sizes();
+    int i = 0;
+    for(int16 s : parameter_block_sizes())
+      CHECK_EQ(s, b->parameter_block_sizes()[i++]);
+  }
+
+  static void checkDoublesNear(const double * a, const double * b, size_t size){
+    for(size_t i = 0 ; i< size; i++ ){
+      CHECK_NEAR(a[i], b[i], 1E-9);
+    }
+  }
+
+  static void printDoubles(ostream & out, const double * a, size_t size){
+    out << "[";
+    for(size_t i = 0 ; i< size; i++ ){
+      if(i) out << ", ";
+      out << a[i];
+    }
+    out << "]";
+  }
+
+
+  virtual bool Evaluate(double const* const* parameters,
+                        double* residuals,
+                        double** jacobians) const {
+
+    if(!a->Evaluate(parameters, residuals, jacobians)){
+      return false;
+    }
+    double bResiduals[num_residuals()];
+    double *bJacobiansData[parameter_block_sizes().size()], **bJacobians = jacobians ? bJacobiansData : nullptr;
+    int i = 0;
+    if(jacobians){
+      for(int16 s : parameter_block_sizes()){
+        bJacobians[i] = jacobians[i] ? new double[num_residuals() * s] : nullptr;
+        i++;
+      }
+    }
+    if(!b->Evaluate(parameters, bResiduals, bJacobians)){
+      return false;
+    }
+
+    std::cout << "residuals=";
+    printDoubles(std::cout, residuals, num_residuals());
+    std::cout << std::endl; // XXX: debug output of residuals
+
+    std::cout << "bResiduals=";
+    printDoubles(std::cout, bResiduals, num_residuals());
+    std::cout << std::endl; // XXX: debug output of residuals
+
+    checkDoublesNear(residuals, bResiduals, num_residuals());
+
+
+    if(jacobians){
+      i = 0;
+      for(auto & jBOrg : bJacobiansData){
+        if(jBOrg){
+          int16 s = num_residuals() * parameter_block_sizes()[i];
+          double * jA = jacobians[i], * jB = jBOrg;
+          double localParamJac[4 * 3], jAS[3 * 3], jBS[3 * 3];
+          if(s == 3 * 4){
+            s = 3 * 3;
+            ceres::QuaternionParameterization().ComputeJacobian(parameters[0], localParamJac);
+
+            Eigen::Map<Eigen::Matrix<double, 4, 3, Eigen::RowMajor> > locParamJac(localParamJac);
+
+            Eigen::Map<Eigen::Matrix<double, 3, 4, Eigen::RowMajor> > jacMapA(jA);
+            Eigen::Map<Eigen::Matrix<double, 3, 4, Eigen::RowMajor> > jacMapB(jB);
+
+            Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor> > jASMap(jAS);
+            jASMap = jacMapA * locParamJac;
+            Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor> > jBSMap(jBS);
+            jBSMap = jacMapB * locParamJac;
+
+            jA = jAS;
+            jB = jBS;
+          }
+
+  //        std::cout << "jA(" << i << ")=";
+  //        printDoubles(std::cout, jA, s);
+  //        std::cout << std::endl; // XXX: debug output of residuals
+  //
+  //        std::cout << "jB(" << i << ")=";
+  //        printDoubles(std::cout, jB, s);
+  //        std::cout << std::endl; // XXX: debug output of residuals
+
+          checkDoublesNear(jA, jB, s);
+          delete jBOrg;
+        }
+        i++;
+      }
+    }
+    return true;
+  }
+  virtual ~ComparingCostFunction() {
+    delete a;
+    delete b;
+  }
+ private:
+  TCostFunctionA *a;
+  CostFunction *b;
+};
+
+#define CHECK_COST(a, b) new ComparingCostFunction<typename std::remove_reference<decltype(*a)>::type>(a, b)
+#else
+#define CHECK_COST(a, b) a
+#endif
+
 
 namespace cerise{ 
     class OptimiseRotation {
@@ -219,24 +342,40 @@ namespace cerise{
                     OptimisedOrientation & oo(oos.states[i]);
 
                     LossFunction* loss_function;
-                    CostFunction *cost_function;
+                    CostFunction* cost_function;
                     // Acceleration
                     loss_function = FLAGS_robustify ? new HuberLoss(1.0) : NULL;
+#if USE_CERES_AD || CHECK_WITH_CERES_AD
                     cost_function = new AutoDiffCostFunction<cerise::AccelerometerErrorQuat,3,4,1>(
                             new cerise::AccelerometerErrorQuat(dl.depth,dl.a[0],dl.a[1],dl.a[2], 100.0));
+#endif
+#if !USE_CERES_AD || CHECK_WITH_CERES_AD
+                    cost_function = CHECK_COST(new cerise_tex::AccelerometerErrorQuat(dl.depth,dl.a[0],dl.a[1],dl.a[2], 100.0), cost_function);
+#endif
                     problem.AddResidualBlock(cost_function,loss_function, oo.rotation,oo.propulsion);
 
                     // Magnetic field
                     loss_function = FLAGS_robustify ? new HuberLoss(100.0) : NULL;
-                    cost_function = new AutoDiffCostFunction<cerise::MagnetometerErrorQuat,3,4>(
+#if USE_CERES_AD || CHECK_WITH_CERES_AD
+                   cost_function = new AutoDiffCostFunction<cerise::MagnetometerErrorQuat,3,4>(
                             new cerise::MagnetometerErrorQuat(dl.m[0],dl.m[1],dl.m[2], 
                                 gps.B[0],gps.B[1],gps.B[2], 0.1));
+#endif
+#if !USE_CERES_AD || CHECK_WITH_CERES_AD
+                   cost_function = CHECK_COST(new cerise_tex::MagnetometerErrorQuat(dl.m[0],dl.m[1],dl.m[2], gps.B[0],gps.B[1],gps.B[2], 0.1), cost_function);
+#endif
                     problem.AddResidualBlock(cost_function,loss_function,oo.rotation);
 
                     if (i>0) {
                         // Smoothness constraint
+#if USE_CERES_AD || CHECK_WITH_CERES_AD
                         cost_function = new AutoDiffCostFunction<cerise::SmoothnessConstraint,1,1,1>(
                                 new cerise::SmoothnessConstraint(5e1));
+#endif
+#if !USE_CERES_AD || CHECK_WITH_CERES_AD
+                        cost_function = CHECK_COST(new cerise_tex::SmoothnessConstraint(5e1), cost_function);
+#endif
+
                         problem.AddResidualBlock(cost_function,NULL,oos.states[i-1].propulsion, oo.propulsion);
                     }
                     if (FLAGS_use_local_parameterization) {

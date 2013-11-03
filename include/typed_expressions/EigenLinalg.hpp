@@ -55,6 +55,35 @@ struct MatrixConvertible<std::initializer_list<double>> {
   }
 };
 
+
+inline typename MatrixConvertible<std::initializer_list<double>>::type asMatrixConvertible(std::initializer_list<double> list, MatrixSize size = -1) {
+  return MatrixConvertible<std::initializer_list<double>>::asMatrixConvertible(list, size);
+}
+template<>
+struct MatrixConvertible<std::initializer_list<std::initializer_list<double>>> {
+  typedef Eigen::MatrixXd type;
+  static inline Eigen::MatrixXd asMatrixConvertible(std::initializer_list<std::initializer_list<double>> t, MatrixSize size = -1){
+    if(size == -1) size = t.size();
+    Eigen::MatrixXd v(size, t.begin()->size());
+    int i = 0;
+    for(auto & l : t){
+      int j = 0;
+      for(auto d : l){
+        v(i, j) = d;
+        j++;
+      }
+      i++;
+    }
+    return v;
+  }
+};
+
+
+inline typename MatrixConvertible<std::initializer_list<std::initializer_list<double>>>::type asMatrixConvertible(std::initializer_list<std::initializer_list<double>> list) {
+  return MatrixConvertible<std::initializer_list<std::initializer_list<double>>>::asMatrixConvertible(list);
+}
+
+
 template<>
 struct MatrixConvertible<std::function<double(MatrixSize i)>> {
   typedef Eigen::VectorXd type;
