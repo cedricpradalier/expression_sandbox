@@ -54,6 +54,7 @@ add_executable(TestTypedExpresssions src/TestTypedExpressions.cpp)
 
 rosbuild_add_executable(benchmarker 
 	benchmark/malloc_count.c
+	benchmark/StopWatch.cpp
 	benchmark/Benchmarker.cpp
 
 	benchmark/one_rotation_projection/ProjectionProblem.cpp

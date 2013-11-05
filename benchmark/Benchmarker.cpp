@@ -22,17 +22,6 @@ namespace po = boost::program_options;
 
 namespace benchmark {
 std::vector<const Benchmark*> Benchmark::benchmarkerRegister;
-
-std::ostream & operator << (std::ostream & out, const typename StopWatch::duration::durationType & duration){
-  out << std::chrono::duration_cast<std::chrono::duration<double> >(duration).count();
-  return out;
-}
-
-std::ostream & operator << (std::ostream & out, const typename StopWatch::duration & duration){
-  out << duration.duration << "s" << ", CPU:" << ((double) duration.cpuDuration / 1000000) << "s";
-  return out;
-}
-
 }
 
 int main(int argc, const char **argv) {

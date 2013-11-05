@@ -8,44 +8,17 @@
 #include <memory>
 #include <iostream>
 #include <iomanip>
-#include <chrono>
-
-#include <bits/time.h>
-#include <ctime>
 #include <cmath>
 #include <vector>
 
+#include "StopWatch.hpp"
 #include "malloc_count.h"
 #include "ProblemSolver.hpp"
 
 
 namespace benchmark {
 
-class StopWatch {
- public:
-  struct duration {
-    typedef decltype(std::chrono::steady_clock::now() - std::chrono::steady_clock::now()) durationType;
-    decltype(std::chrono::steady_clock::now() - std::chrono::steady_clock::now()) duration;
-    std::clock_t cpuDuration;
-  };
-
-  duration read() { return {std::chrono::steady_clock::now() - start, std::clock() - cpuStart};}
-  duration readAndReset() { auto r = read(); reset(); return r;}
-
-  StopWatch(){
-    reset();
-  }
-  void reset(){
-    start = std::chrono::steady_clock::now();
-    cpuStart = std::clock();
-  }
- private:
-  std::chrono::steady_clock::time_point start;
-  std::clock_t cpuStart;
-};
-
-std::ostream & operator << (std::ostream & out, const typename StopWatch::duration::durationType & duration);
-std::ostream & operator << (std::ostream & out, const typename StopWatch::duration & duration);
+using namespace stop_watch;
 
 class Benchmark {
  public:
@@ -156,9 +129,9 @@ class BenchmarkInstance : public Benchmark::Instance {
    private:
     static void outDuration(std::ostream & out, const StopWatch::duration & duration, const StopWatch::duration * refDuration = nullptr) {
       if(refDuration){
-        out << std::chrono::duration_cast<std::chrono::duration<double> >(duration.duration).count() / std::chrono::duration_cast<std::chrono::duration<double> >(refDuration->duration).count();
+        out << std::chrono::duration_cast<std::chrono::duration<double> >(duration.timeDuration).count() / std::chrono::duration_cast<std::chrono::duration<double> >(refDuration->timeDuration).count();
       }else{
-        out << duration.duration;
+        out << duration.timeDuration;
       }
     }
     typename StopWatch::duration durationPreparing;
