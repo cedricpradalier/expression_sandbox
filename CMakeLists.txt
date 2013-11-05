@@ -61,6 +61,7 @@ rosbuild_add_executable(benchmarker
 	benchmark/one_rotation_projection/GeneratedExpressionSolver.cpp
 	benchmark/one_rotation_projection/TypedExpressionSolverDepth10Eig.cpp
 	benchmark/one_rotation_projection/CeresExpressionSolver.cpp
+	benchmark/one_rotation_projection/HandTunedExpressionSolver.cpp
 
 	benchmark/two_rotations_projection/ProjectionProblem.cpp
 	benchmark/two_rotations_projection/GeneratedExpressionSolver.cpp
