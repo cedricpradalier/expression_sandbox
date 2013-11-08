@@ -13,6 +13,10 @@
 #include "EuclideanPoint.hpp"
 #include "Derivatives.hpp"
 
+#define INLINE inline
+//__attribute__((always_inline))
+
+
 namespace quat_calc {
 using namespace linalg;
 
@@ -35,23 +39,23 @@ enum {
   REAL_IS_LAST_MASK = 2,
 };
 
-inline constexpr bool isRealFirst(const QuaternionMode mode) {
+INLINE constexpr bool isRealFirst(const QuaternionMode mode) {
   return ((int) mode & internal::REAL_IS_LAST_MASK) == 0;
 }
 
-inline constexpr bool isTraditionalMultOrder(const QuaternionMode mode) {
+INLINE constexpr bool isTraditionalMultOrder(const QuaternionMode mode) {
   return ((int) mode & internal::OPPOSITE_MULT_ORDER_MASK) == 0;
 }
-inline constexpr int getRealIndex(QuaternionMode mode) {
+INLINE constexpr int getRealIndex(QuaternionMode mode) {
   return isRealFirst(mode) ? 0 : 3;
 }
-inline constexpr int getIIndex(QuaternionMode mode) {
+INLINE constexpr int getIIndex(QuaternionMode mode) {
   return isRealFirst(mode) ? 1 : 0;
 }
-inline constexpr int getJIndex(QuaternionMode mode) {
+INLINE constexpr int getJIndex(QuaternionMode mode) {
   return isRealFirst(mode) ? 2 : 1;
 }
-inline constexpr int getKIndex(const QuaternionMode mode) {
+INLINE constexpr int getKIndex(const QuaternionMode mode) {
   return isRealFirst(mode) ? 3 : 2;
 }
 
@@ -73,11 +77,11 @@ struct QuaternionCalculator {
 
 
 
-  inline static vector_t getIdentity() {
+  INLINE static vector_t getIdentity() {
     return isRealFirst(EMode) ? vector_t(1, 0, 0, 0) : vector_t(0, 0, 0, 1);
   }
 
-  inline static void quatMultTraditionalInto(const vector_t & a, const vector_t & b, vector_t & res) {
+  INLINE static void quatMultTraditionalInto(const vector_t & a, const vector_t & b, vector_t & res) {
     // aIIndex*bRIndex + aJIndex*bKIndex - aKIndex*bJIndex + aRIndex*bIIndex
     res[IIndex] = a[IIndex] * b[RIndex] + a[JIndex] * b[KIndex] - a[KIndex] * b[JIndex] + a[RIndex] * b[IIndex];
     // aKIndex*bIIndex - aIIndex*bKIndex + aJIndex*bRIndex + aRIndex*bJIndex
@@ -87,7 +91,7 @@ struct QuaternionCalculator {
     // aRIndex*bRIndex - aJIndex*bJIndex - aKIndex*bKIndex - aIIndex*bIIndex
     res[RIndex] = a[RIndex] * b[RIndex] - a[JIndex] * b[JIndex] - a[KIndex] * b[KIndex] - a[IIndex] * b[IIndex];
   }
-  inline static void quatMultTraditionalInto(const vector_t & a, const vector_t & b, pure_imag_vector_t & res) {
+  INLINE static void quatMultTraditionalInto(const vector_t & a, const vector_t & b, pure_imag_vector_t & res) {
     // aIIndex*bRIndex + aJIndex*bKIndex - aKIndex*bJIndex + aRIndex*bIIndex
     res[IPureIndex] = a[IIndex] * b[RIndex] + a[JIndex] * b[KIndex] - a[KIndex] * b[JIndex] + a[RIndex] * b[IIndex];
     // aKIndex*bIIndex - aIIndex*bKIndex + aJIndex*bRIndex + aRIndex*bJIndex
@@ -96,14 +100,14 @@ struct QuaternionCalculator {
     res[KPureIndex] = a[IIndex] * b[JIndex] - a[JIndex] * b[IIndex] + a[KIndex] * b[RIndex] + a[RIndex] * b[KIndex];
   }
 
-  inline static void quatMultTraditionalInto(const pure_imag_vector_t & a, const vector_t & b, vector_t & res) {
+  INLINE static void quatMultTraditionalInto(const pure_imag_vector_t & a, const vector_t & b, vector_t & res) {
     res[IIndex] = a[IPureIndex] * b[RIndex] + a[JPureIndex] * b[KIndex] - a[KPureIndex] * b[JIndex];
     res[JIndex] = a[KPureIndex] * b[IIndex] - a[IPureIndex] * b[KIndex] + a[JPureIndex] * b[RIndex];
     res[KIndex] = a[IPureIndex] * b[JIndex] - a[JPureIndex] * b[IIndex] + a[KPureIndex] * b[RIndex];
     res[RIndex] = -a[JPureIndex] * b[JIndex] - a[KPureIndex] * b[KIndex] - a[IPureIndex] * b[IIndex];
   }
 
-  inline static void quatMultTraditionalInto(const pure_imag_vector_t & a, const pure_imag_vector_t & b, vector_t & res) {
+  INLINE static void quatMultTraditionalInto(const pure_imag_vector_t & a, const pure_imag_vector_t & b, vector_t & res) {
     res[IIndex] = + a[JPureIndex] * b[KPureIndex] - a[KPureIndex] * b[JPureIndex];
     res[JIndex] = a[KPureIndex] * b[IPureIndex] - a[IPureIndex] * b[KPureIndex];
     res[KIndex] = a[IPureIndex] * b[JPureIndex] - a[JPureIndex] * b[IPureIndex];
@@ -111,60 +115,60 @@ struct QuaternionCalculator {
   }
 
 
-  inline static void quatMultTraditionalInto(const vector_t & a, const pure_imag_vector_t & b, vector_t & res) {
+  INLINE static void quatMultTraditionalInto(const vector_t & a, const pure_imag_vector_t & b, vector_t & res) {
     res[IIndex] = +a[JIndex] * b[KPureIndex] - a[KIndex] * b[JPureIndex] + a[RIndex] * b[IPureIndex];
     res[JIndex] = a[KIndex] * b[IPureIndex] - a[IIndex] * b[KPureIndex] + +a[RIndex] * b[JPureIndex];
     res[KIndex] = a[IIndex] * b[JPureIndex] - a[JIndex] * b[IPureIndex] + +a[RIndex] * b[KPureIndex];
     res[RIndex] = -a[JIndex] * b[JPureIndex] - a[KIndex] * b[KPureIndex] - a[IIndex] * b[IPureIndex];
   }
 
-  inline static void quatMultTraditionalInto(const vector_t & a, const pure_imag_vector_t & b, pure_imag_vector_t & res) {
+  INLINE static void quatMultTraditionalInto(const vector_t & a, const pure_imag_vector_t & b, pure_imag_vector_t & res) {
     res[IPureIndex] = +a[JIndex] * b[KPureIndex] - a[KIndex] * b[JPureIndex] + a[RIndex] * b[IPureIndex];
     res[JPureIndex] = a[KIndex] * b[IPureIndex] - a[IIndex] * b[KPureIndex] + +a[RIndex] * b[JPureIndex];
     res[KPureIndex] = a[IIndex] * b[JPureIndex] - a[JIndex] * b[IPureIndex] + +a[RIndex] * b[KPureIndex];
   }
 
-  inline static void quatMultTraditionalInto(const pure_imag_vector_t & a, const vector_t & b, pure_imag_vector_t & res) {
+  INLINE static void quatMultTraditionalInto(const pure_imag_vector_t & a, const vector_t & b, pure_imag_vector_t & res) {
     res[IPureIndex] = a[IPureIndex] * b[RIndex] + a[JPureIndex] * b[KIndex] - a[KPureIndex] * b[JIndex];
     res[JPureIndex] = a[KPureIndex] * b[IIndex] - a[IPureIndex] * b[KIndex] + a[JPureIndex] * b[RIndex];
     res[KPureIndex] = a[IPureIndex] * b[JIndex] - a[JPureIndex] * b[IIndex] + a[KPureIndex] * b[RIndex];
   }
 
   template<MatrixSize ISizeA, MatrixSize ISizeB, MatrixSize ISizeC>
-  inline static void quatMultInto(const Vector<ISizeA> & a, const Vector<ISizeB> & b, Vector<ISizeC> & result) {
+  INLINE static void quatMultInto(const Vector<ISizeA> & a, const Vector<ISizeB> & b, Vector<ISizeC> & result) {
     return isTraditionalMultOrder(EMode) ? quatMultTraditionalInto(a, b, result) : quatMultTraditionalInto(b, a, result);
   }
 
   template<MatrixSize ISizeA, MatrixSize ISizeB>
-  inline static vector_t quatMult(const Vector<ISizeA> & a, const Vector<ISizeB> & b) {
+  INLINE static vector_t quatMult(const Vector<ISizeA> & a, const Vector<ISizeB> & b) {
     vector_t result;
     quatMultInto(a, b, result);
     return result;
   }
 
 
-  inline static vector_t conjugate(const vector_t & v) {
+  INLINE static vector_t conjugate(const vector_t & v) {
     vector_t r(v);
     r.template block<3, 1>(IIndex, 0) *= -1;
     return r;
   }
-  inline static vector_t invert(const vector_t & v) {
+  INLINE static vector_t invert(const vector_t & v) {
     vector_t r(conjugate(v));
     r /= r.dot(r);
     return r;
   }
 
-  inline static auto getImagPart(const vector_t & v) -> decltype(v.template block<3, 1>(IIndex, 0)) {
+  INLINE static auto getImagPart(const vector_t & v) -> decltype(v.template block<3, 1>(IIndex, 0)) {
     return v.template block<3, 1>(IIndex, 0);
   }
 
   template<enum QuaternionMode EOtherMode, int ICols = 1, typename DERIVED_MATRIX>
-  inline static linalg::Matrix<double, 4, ICols> convertFromOtherMode(const linalg::MatrixBase<DERIVED_MATRIX > & v){
+  INLINE static linalg::Matrix<double, 4, ICols> convertFromOtherMode(const linalg::MatrixBase<DERIVED_MATRIX > & v){
     return QuaternionCalculator<TScalar, EOtherMode>::template convertToOtherMode<EMode, ICols>(v);
   }
 
   template <int index>
-  static inline vector_t clacBasisVector(){
+  static INLINE vector_t clacBasisVector(){
     vector_t ret;
     ret.setZero();
     ret[isRealFirst(EMode) ? index : (index + 3) % 4] = typename vector_t::Scalar(1);
@@ -247,7 +251,7 @@ class UnitQuaternion : public EuclideanPoint<4> {
   }
 
   template <typename Ret = Inverse<UnitQuaternion> > const
-  inline typename Ret::App inverse() const {
+  INLINE typename Ret::App inverse() const {
     return Ret(*this);
   }
 
@@ -262,13 +266,13 @@ class UnitQuaternion : public EuclideanPoint<4> {
     return thisTangent + ret;
   }
 
-  inline EuclideanPoint<3> evalRotate(const EuclideanPoint<3> & other) const{
+  INLINE EuclideanPoint<3> evalRotate(const EuclideanPoint<3> & other) const{
     EuclideanPoint<3> ret;
     evalRotateInto(other, ret);
     return ret;
   }
   
-  inline void evalRotateInto(const EuclideanPoint<3> & other, EuclideanPoint<3> & result) const{
+  INLINE void evalRotateInto(const EuclideanPoint<3> & other, EuclideanPoint<3> & result) const{
     //Calc::quatMultInto(Calc::quatMult(getValue(), other.getValue()), Calc::conjugate(getValue()), retsult.getValue());
 
     /* Identify v with the pure imaginary quaternion given by other.
@@ -304,12 +308,12 @@ class UnitQuaternion : public EuclideanPoint<4> {
 //    result[2] = T(2) * ((t7 - t3) * other[0] + (t2 + t9) * other[1] + (t5 + t8) * other[2]) + other[2];  // NOLINT
   }
 
-  inline EuclideanPoint<3> evalInverseRotate(const EuclideanPoint<3> & other) const{
+  INLINE EuclideanPoint<3> evalInverseRotate(const EuclideanPoint<3> & other) const{
     EuclideanPoint<3> ret;
     evalInverseRotateInto(other, ret);
     return ret;
   }
-  inline void evalInverseRotateInto(const EuclideanPoint<3> & other, EuclideanPoint<3> & result) const{
+  INLINE void evalInverseRotateInto(const EuclideanPoint<3> & other, EuclideanPoint<3> & result) const{
     /* see evalRotateInto */
     auto & q = getValue();
     auto & q_R = q[Calc::RIndex];
@@ -319,20 +323,13 @@ class UnitQuaternion : public EuclideanPoint<4> {
   }
 
 
-  inline EuclideanPoint<3> evalRotateDiff(const Vector<3> & thisTangent, const EuclideanPoint<3> & other, const Vector<3> & otherTangent) const{
-    return
-        Calc::getImagPart(Calc::quatMult(Calc::quatMult(getValue(), other.getValue()), Calc::conjugate(getValue()))) +
-        Calc::getImagPart(Calc::quatMult(Calc::quatMult(getValue(), other.getValue()), Calc::conjugate(getValue())))
-    ;
-  }
-
   template <typename Ret = Rotate<UnitQuaternion, EuclideanPoint<3> > >
-  inline typename Ret::App rotate(const EuclideanPoint<3> & other) const{
+  INLINE typename Ret::App rotate(const EuclideanPoint<3> & other) const{
     return Ret(*this, other);
   }
 
   template <typename Ret=EuclideanPoint<3> >
-  inline Ret imag() const {
+  INLINE Ret imag() const {
      return Ret(Calc::getImagPart(getValue()));
   }
 
@@ -371,18 +368,18 @@ class UnitQuaternion : public EuclideanPoint<4> {
 
 
 template <typename A, typename B>
-inline const EuclideanPoint<3> evalExp(const Rotate<Inverse<A>, B, EuclideanPoint<3> > & r){
+INLINE const EuclideanPoint<3> evalExp(const Rotate<Inverse<A>, B, EuclideanPoint<3> > & r){
   return evalExp(r.getA().getA()).evalInverseRotate(evalExp(r.getB()));
 }
 
 template <typename DERIVED>
 struct OpMemberBase<UnitQuaternion, DERIVED> {
   template <typename Ret = Inverse<DERIVED> >
-  inline typename Ret::App inverse () const {
+  INLINE typename Ret::App inverse () const {
     return Ret(static_cast<const DERIVED&>(*this));
   }
   template <typename Other, typename Ret = Rotate<DERIVED, Other> >
-  inline typename Ret::App rotate(const Other & other) const {
+  INLINE typename Ret::App rotate(const Other & other) const {
     return Ret(static_cast<const DERIVED&>(*this), other);
   }
 };
@@ -393,7 +390,7 @@ struct get_tangent_space<UnitQuaternion> { //TODO should default to nested type
 };
 
 template <unsigned diffIndex, unsigned basisIndex, typename A, typename Differential, typename Cache>
-inline void evalDiffCached(const AnyUnOp<UnitQuaternion, Inverse<A>> & anyExp, Differential & d, Cache & cache)
+INLINE void evalDiffCached(const AnyUnOp<UnitQuaternion, Inverse<A>> & anyExp, Differential & d, Cache & cache)
 {
   auto & exp = anyExp.getExp();
   auto & a = cache.accessValue(exp);
@@ -402,7 +399,7 @@ inline void evalDiffCached(const AnyUnOp<UnitQuaternion, Inverse<A>> & anyExp, D
 }
 
 template <unsigned diffIndex, unsigned basisIndex, typename A, typename B, typename Differential>
-inline void evalDiff(const AnyBinOp<UnitQuaternion, UnitQuaternion, Times<A, B>> & anyTimes, Differential & d)
+INLINE void evalDiff(const AnyBinOp<UnitQuaternion, UnitQuaternion, Times<A, B>> & anyTimes, Differential & d)
 {
   auto & times = anyTimes.getExp();
   auto b = evalExp(times.getB());
@@ -412,7 +409,7 @@ inline void evalDiff(const AnyBinOp<UnitQuaternion, UnitQuaternion, Times<A, B>>
 }
 
 template <unsigned diffIndex, unsigned basisIndex, typename A, typename B, typename Differential, typename Cache>
-inline void evalDiffCached(const AnyBinOp<UnitQuaternion, UnitQuaternion, Times<A, B>> & anyTimes, Differential & d, Cache & cache)
+INLINE void evalDiffCached(const AnyBinOp<UnitQuaternion, UnitQuaternion, Times<A, B>> & anyTimes, Differential & d, Cache & cache)
 {
   auto & times = anyTimes.getExp();
   auto & b = cache.b.accessValue(times.getB());
@@ -444,7 +441,7 @@ inline void evalDiffCached(const AnyBinOp<UnitQuaternion, UnitQuaternion, Times<
 //};
 
 template <unsigned diffIndex, unsigned basisIndex, typename A, typename B, typename Differential>
-inline void evalDiff(const AnyBinOp<UnitQuaternion, EuclideanPoint<3>, Rotate<A, B, EuclideanPoint<3>>> & anyExp, Differential & d)
+INLINE void evalDiff(const AnyBinOp<UnitQuaternion, EuclideanPoint<3>, Rotate<A, B, EuclideanPoint<3>>> & anyExp, Differential & d)
 {
   auto & exp = anyExp.getExp();
   const UnitQuaternion a = evalExp(exp.getA());
@@ -460,7 +457,7 @@ inline void evalDiff(const AnyBinOp<UnitQuaternion, EuclideanPoint<3>, Rotate<A,
 }
 
 template <unsigned diffIndex, unsigned basisIndex, typename A, typename B, typename Differential, typename Cache>
-inline void evalDiffCached(const AnyBinOp<UnitQuaternion, EuclideanPoint<3>, Rotate<A, B, EuclideanPoint<3>>> & anyExp, Differential & d, Cache &cache)
+INLINE void evalDiffCached(const AnyBinOp<UnitQuaternion, EuclideanPoint<3>, Rotate<A, B, EuclideanPoint<3>>> & anyExp, Differential & d, Cache &cache)
 {
   auto & exp = anyExp.getExp();
   const UnitQuaternion & a = cache.a.accessValue(exp.getA());
@@ -476,7 +473,7 @@ inline void evalDiffCached(const AnyBinOp<UnitQuaternion, EuclideanPoint<3>, Rot
 }
 
 template <unsigned diffIndex, unsigned basisIndex, typename A, typename B, typename Differential, typename Cache>
-inline void evalDiffCached(const AnyBinOp<UnitQuaternion, EuclideanPoint<3>, Rotate<Inverse<A>, B, EuclideanPoint<3>>> & anyExp, Differential & d, Cache &cache)
+INLINE void evalDiffCached(const AnyBinOp<UnitQuaternion, EuclideanPoint<3>, Rotate<Inverse<A>, B, EuclideanPoint<3>>> & anyExp, Differential & d, Cache &cache)
 {
   auto & exp = anyExp.getExp();
   const UnitQuaternion & a = cache.a.accessValue(exp.getA());
