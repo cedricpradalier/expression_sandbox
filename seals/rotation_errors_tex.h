@@ -10,6 +10,7 @@
 #include "rotation_errors.h"
 
 namespace cerise_tex {
+  static Eigen::DiagonalMatrix<double, 3> S(cerise::MagnetometerErrorQuat::S[0], cerise::MagnetometerErrorQuat::S[1], cerise::MagnetometerErrorQuat::S[2]);
 
   void removeLocalQuaternionParametrization(const ceres::QuaternionParameterization & parametrization, const double* parameters, const Eigen::Matrix<double, 3, 3>& quatJ, double* jacobian) {
     //TODO fix ceres to accept 3x3 jacobians here
@@ -114,6 +115,7 @@ namespace cerise_tex {
 
           if(jacobians){
             Eigen::Matrix<double, 3, 3> quatJ;
+//            Eigen::Map<Eigen::Matrix<double, 3, 3>> quatJ(jacobians[0]);
             quatJ.setZero();
             evalFullDiffIntoCached(exp, quaternion, cache, quatJ);
             removeLocalQuaternionParametrization(parametrization, parameters[0], quatJ, jacobians[0]);
@@ -148,20 +150,19 @@ namespace cerise_tex {
       virtual bool Evaluate(double const* const* parameters,
                             double* residuals,
                             double** jacobians) const {
-
-#if !NDEBUG || 1
+#if !NDEBUG
           Eigen::Map<const Eigen::Matrix<double, 4, 1>> map(parameters[0]);
           UnitQuaternion q(map);
           Diffable<UnitQuaternion, 0> quaternion(q);
 #else
-          CHECK_EQ(0, ((long)parameters[0])%16);
+//          CHECK_EQ(0, ((long)parameters[0])%16);
           Diffable<Ref<UnitQuaternion>, 0> quaternion(reinterpret_cast<const UnitQuaternion&>(*parameters[0]));
 #endif
 
           // camera[0,1,2] are the angle-axis rotation.
           auto corrected_body_mag = m && Ref<EuclideanPoint<3>>(reinterpret_cast<const EuclideanPoint<3> &>(cerise::MagnetometerErrorQuat::S));
 
-          // The error is the difference between the predicted and a position.
+//           The error is the difference between the predicted and a position.
           auto exp = (rotate(quaternion, corrected_body_mag) - b) * Scalar<double>(weight);
 #ifndef NDEBUG
           std::cout << "exp(MagnetometerErrorQuat)=" << exp << std::endl; // XXX: debug output of exp
@@ -172,8 +173,17 @@ namespace cerise_tex {
 
           if(jacobians){
             Eigen::Matrix<double, 3, 3> quatJ;
+//            Eigen::Map<Eigen::Matrix<double, 3, 3>> quatJ(jacobians[0]);
+
             quatJ.setZero();
             evalFullDiffIntoCached(exp, quaternion, cache, quatJ);
+
+//            auto & rot = cache.a.a.accessValue(exp.getA().getA());
+//            double w2 = 2 * weight;
+//            quatJ <<
+//              0, w2 * rot[2], -w2 * rot[1],
+//              -w2 * rot[2], 0, w2 * rot[0],
+//              w2 * rot[1], -w2 * rot[0], 0;
             removeLocalQuaternionParametrization(parametrization, parameters[0], quatJ, jacobians[0]);
           }
           return true;
