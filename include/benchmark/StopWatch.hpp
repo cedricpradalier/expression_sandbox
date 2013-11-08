@@ -12,40 +12,79 @@
 #include <chrono>
 #include <bits/time.h>
 #include <ctime>
-
+#include <string>
 
 namespace stop_watch {
+
+namespace rdtsc {
+  std::uint64_t now ();
+  double toDouble(const decltype(now()- now()) & dur);
+  std::string getUnitString();
+}
+
+namespace hpet {
+  timespec now ();
+  timespec operator - (const timespec & a, const timespec & b);
+  timespec & operator += (timespec & a, const timespec & b);
+  timespec & operator -= (timespec & a, const timespec & b);
+
+  double toDouble(const decltype(now()- now()) & dur);
+  std::string getUnitString();
+}
+
+
+namespace cclock {
+  std::clock_t now ();
+  double toDouble(const decltype(now()- now()) & dur);
+  std::string getUnitString();
+}
+
+namespace highres_clock {
+  decltype(std::chrono::high_resolution_clock::now()) now ();
+  double toDouble(const decltype(now()- now()) & dur);
+  std::string getUnitString();
+}
+
+namespace clock = rdtsc;
+
+using namespace clock;
+
 class StopWatch {
  public:
-  struct duration {
-    typedef decltype(std::chrono::steady_clock::now() - std::chrono::steady_clock::now()) durationType;
-    decltype(std::chrono::steady_clock::now() - std::chrono::steady_clock::now()) timeDuration;
-    std::clock_t cpuDuration;
+  typedef decltype(now()) TimeType;
+  struct Duration {
+    typedef decltype(now() - now()) DurationType;
+    DurationType duration;
 
-    void operator += (const duration & d) {
-      cpuDuration += d.cpuDuration;
-      timeDuration += d.timeDuration;
+    void operator += (const Duration & d) {
+      duration += d.duration;
     };
-    void operator -= (const duration & d) {
-      cpuDuration -= d.cpuDuration;
-      timeDuration -= d.timeDuration;
+    void operator -= (const Duration & d) {
+      duration -= d.duration;
     };
+
+    operator double () const {
+      return toDouble(duration);
+    }
   };
 
-  duration read() { return {std::chrono::steady_clock::now() - timeStart, std::clock() - cpuStart};}
-  duration readAndReset() { auto r = read(); reset(); return r;}
+  inline Duration read() {
+    return { now() - startTime };
+  }
+
+  Duration readAndReset() { auto r = read(); reset(); return r;}
 
   StopWatch(){
     reset();
   }
   void reset(){
-    timeStart = std::chrono::steady_clock::now();
-    cpuStart = std::clock();
+    startTime = now();
   }
  private:
-  std::chrono::steady_clock::time_point timeStart;
-  std::clock_t cpuStart;
+  TimeType startTime;
 };
+std::ostream & operator << (std::ostream & out, const typename StopWatch::Duration & duration);
+
 
 class CollectingStopWatch : public StopWatch {
  public:
@@ -64,20 +103,17 @@ class CollectingStopWatch : public StopWatch {
      }
    }
 
-   inline duration getAndForgetCollected (){
-     duration d = collected;
-     collected = duration();
+   inline Duration getAndForgetCollected (){
+     Duration d = collected;
+     collected = Duration();
      return d;
    }
 
  private:
-  duration collected;
+  Duration collected;
   bool running;
 };
 
-
-std::ostream & operator << (std::ostream & out, const typename StopWatch::duration::durationType & duration);
-std::ostream & operator << (std::ostream & out, const typename StopWatch::duration & duration);
 
 } // namespace stop_watch
 

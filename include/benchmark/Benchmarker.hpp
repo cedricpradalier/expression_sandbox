@@ -118,7 +118,7 @@ class BenchmarkInstance : public Benchmark::Instance {
     struct SolvingVariantStat {
       SolvingVariantStat(): mean(0), svar(0) {}
       void calc();
-      typename StopWatch::duration durationSolving;
+      typename StopWatch::Duration durationSolving;
       std::vector<double> errors;
       double mean, svar;
     };
@@ -127,14 +127,14 @@ class BenchmarkInstance : public Benchmark::Instance {
         return solvingStats[(int)v];
     }
    private:
-    static void outDuration(std::ostream & out, const StopWatch::duration & duration, const StopWatch::duration * refDuration = nullptr) {
+    static void outDuration(std::ostream & out, const StopWatch::Duration & duration, const StopWatch::Duration * refDuration = nullptr) {
       if(refDuration){
-        out << std::chrono::duration_cast<std::chrono::duration<double> >(duration.timeDuration).count() / std::chrono::duration_cast<std::chrono::duration<double> >(refDuration->timeDuration).count();
+        out << (double)duration / (double)*refDuration;
       }else{
-        out << duration.timeDuration;
+        out << (double)duration;
       }
     }
-    typename StopWatch::duration durationPreparing;
+    typename StopWatch::Duration durationPreparing;
     std::vector<SolvingVariantStat> solvingStats;
     size_t usedMemory;
     friend BenchmarkInstance;

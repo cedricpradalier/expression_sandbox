@@ -68,7 +68,7 @@ rosbuild_add_executable(benchmarker
 	benchmark/two_rotations_projection/TypedExpressionSolverDepth10Eig.cpp
 	benchmark/two_rotations_projection/CeresExpressionSolver.cpp
 )
-target_link_libraries(benchmarker dl)
+target_link_libraries(benchmarker dl rt)
 #set_target_properties(benchmarker PROPERTIES COMPILE_FLAGS "-finline-limit=10000000")
 target_link_libraries(benchmarker boost_program_options)
 
