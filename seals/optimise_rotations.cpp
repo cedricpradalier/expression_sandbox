@@ -9,8 +9,11 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
+#include <benchmark/StopWatch.hpp>
+
 //#define USE_CERES_AD 1
-//#define CHECK_WITH_CERES_AD 1
+//#define COMPARE_WITH_CERES 1
+//#define COMPARE_VALUES 1
 
 #if USE_CERES_AD
 #include "rotation_errors.h"
@@ -70,13 +73,50 @@ DEFINE_bool(mag,false,"Estimate the magnetic field vector");
 DEFINE_string(solver_log, "", "File to record the solver execution to.");
 
 
+constexpr int Repetitions = 1;
+
 using namespace ceres;
 
-#if CHECK_WITH_CERES_AD
-template <typename TCostFunctionA>
+struct RepeatingCostFunction : public CostFunction {
+  RepeatingCostFunction(CostFunction * a) : a(a){
+    set_num_residuals(a->num_residuals());
+    *mutable_parameter_block_sizes() = a->parameter_block_sizes();
+  }
+
+  virtual bool Evaluate(double const* const* parameters,
+                        double* residuals,
+                        double** jacobians) const {
+
+    for(int i = Repetitions; i > 0; i--){
+      if(!a->Evaluate(parameters, residuals, jacobians)){
+        return false;
+      }
+    }
+    return true;
+  }
+  virtual ~RepeatingCostFunction() {
+    delete a;
+  }
+ private:
+  CostFunction *a;
+};
+
+
+struct DurationPair {
+  stop_watch::StopWatch::Duration aDuration, bDuration, nopDuration;
+  friend ostream & operator << (ostream & out, const DurationPair & p){
+    out << "a=" << p.aDuration - p.nopDuration << std::endl << "b=" << p.bDuration - p.nopDuration << std::endl<< "nop=" << p.nopDuration;
+    return out;
+  }
+} smoothnessDuration, magnetometerDuration, accelerometerDuration;
+
+stop_watch::StopWatch stopWatch;
+stop_watch::CollectingStopWatch unfairStopWatch;
+
 struct ComparingCostFunction : public CostFunction {
 
-  ComparingCostFunction(TCostFunctionA * a, CostFunction * b) : a(a), b(b){
+
+  ComparingCostFunction(CostFunction * a, CostFunction * b, DurationPair & durationPair) : a(a), b(b), durationPair(durationPair){
     set_num_residuals(a->num_residuals());
     CHECK_EQ(num_residuals(), b->num_residuals());
     *mutable_parameter_block_sizes() = a->parameter_block_sizes();
@@ -105,9 +145,14 @@ struct ComparingCostFunction : public CostFunction {
                         double* residuals,
                         double** jacobians) const {
 
+    stopWatch.reset();
     if(!a->Evaluate(parameters, residuals, jacobians)){
       return false;
     }
+    durationPair.aDuration += stopWatch.readAndReset();
+    auto && d = unfairStopWatch.getAndForgetCollected();
+    durationPair.aDuration -= d;
+
     double bResiduals[num_residuals()];
     double *bJacobiansData[parameter_block_sizes().size()], **bJacobians = jacobians ? bJacobiansData : nullptr;
     int i = 0;
@@ -117,10 +162,16 @@ struct ComparingCostFunction : public CostFunction {
         i++;
       }
     }
+    stopWatch.reset();
     if(!b->Evaluate(parameters, bResiduals, bJacobians)){
       return false;
     }
+    durationPair.bDuration += stopWatch.readAndReset();
+    stopWatch.reset();
+    durationPair.nopDuration += stopWatch.readAndReset();
 
+
+#if COMPARE_VALUES
     std::cout << "residuals=";
     printDoubles(std::cout, residuals, num_residuals());
     std::cout << std::endl; // XXX: debug output of residuals
@@ -128,9 +179,7 @@ struct ComparingCostFunction : public CostFunction {
     std::cout << "bResiduals=";
     printDoubles(std::cout, bResiduals, num_residuals());
     std::cout << std::endl; // XXX: debug output of residuals
-
     checkDoublesNear(residuals, bResiduals, num_residuals());
-
 
     if(jacobians){
       i = 0;
@@ -157,19 +206,24 @@ struct ComparingCostFunction : public CostFunction {
             jB = jBS;
           }
 
-  //        std::cout << "jA(" << i << ")=";
-  //        printDoubles(std::cout, jA, s);
-  //        std::cout << std::endl; // XXX: debug output of residuals
-  //
-  //        std::cout << "jB(" << i << ")=";
-  //        printDoubles(std::cout, jB, s);
-  //        std::cout << std::endl; // XXX: debug output of residuals
+          std::cout << "jA(" << i << ")=";
+          printDoubles(std::cout, jA, s);
+          std::cout << std::endl; // XXX: debug output of residuals
+
+          std::cout << "jB(" << i << ")=";
+          printDoubles(std::cout, jB, s);
+          std::cout << std::endl; // XXX: debug output of residuals
 
           checkDoublesNear(jA, jB, s);
-          delete jBOrg;
         }
         i++;
       }
+
+    }
+#endif
+    if(bJacobians)
+    for(auto & jBOrg : bJacobiansData){
+      delete jBOrg;
     }
     return true;
   }
@@ -178,22 +232,27 @@ struct ComparingCostFunction : public CostFunction {
     delete b;
   }
  private:
-  TCostFunctionA *a;
-  CostFunction *b;
+  CostFunction *a, *b;
+  DurationPair & durationPair;
 };
 
-#define CHECK_COST(a, b) new ComparingCostFunction<typename std::remove_reference<decltype(*a)>::type>(a, b)
+
+#if COMPARE_WITH_CERES
+#define CHECK_COST(a, b, durationPair) new ComparingCostFunction(b, a, durationPair)
 #else
-#define CHECK_COST(a, b) a
+#define CHECK_COST(a, b, durationPair) a;
 #endif
 
 
 namespace cerise{ 
     class OptimiseRotation {
+     public:
+      virtual ~ OptimiseRotation() {}
         protected:
 #ifdef HAS_CGNUPLOT
             cgnuplot::CGnuplot G;
 #endif
+
             class DisplayCallback: public ceres::IterationCallback { 
                 protected:
                     OptimiseRotation & problem;
@@ -288,6 +347,7 @@ namespace cerise{
                 // Loading the data file
                 lines.clear();
                 FILE * fp = fopen(filename,"r");
+                if(!fp) return false;
                 while (!feof(fp)) {
                     if ((lineLimit>0) && ((signed)lines.size() >= lineLimit)) {
                         break;
@@ -345,35 +405,35 @@ namespace cerise{
                     CostFunction* cost_function;
                     // Acceleration
                     loss_function = FLAGS_robustify ? new HuberLoss(1.0) : NULL;
-#if USE_CERES_AD || CHECK_WITH_CERES_AD
-                    cost_function = new AutoDiffCostFunction<cerise::AccelerometerErrorQuat,3,4,1>(
-                            new cerise::AccelerometerErrorQuat(dl.depth,dl.a[0],dl.a[1],dl.a[2], 100.0));
+#if USE_CERES_AD || COMPARE_WITH_CERES
+                    cost_function = new RepeatingCostFunction(new AutoDiffCostFunction<cerise::AccelerometerErrorQuat,3,4,1>(
+                            new cerise::AccelerometerErrorQuat(dl.depth,dl.a[0],dl.a[1],dl.a[2], 100.0)));
 #endif
-#if !USE_CERES_AD || CHECK_WITH_CERES_AD
-                    cost_function = CHECK_COST(new cerise_tex::AccelerometerErrorQuat(dl.depth,dl.a[0],dl.a[1],dl.a[2], 100.0), cost_function);
+#if !USE_CERES_AD || COMPARE_WITH_CERES
+                    cost_function = CHECK_COST(new RepeatingCostFunction(new cerise_tex::AccelerometerErrorQuat(dl.depth,dl.a[0],dl.a[1],dl.a[2], 100.0)), cost_function, accelerometerDuration);
 #endif
                     problem.AddResidualBlock(cost_function,loss_function, oo.rotation,oo.propulsion);
 
                     // Magnetic field
                     loss_function = FLAGS_robustify ? new HuberLoss(100.0) : NULL;
-#if USE_CERES_AD || CHECK_WITH_CERES_AD
-                   cost_function = new AutoDiffCostFunction<cerise::MagnetometerErrorQuat,3,4>(
+#if USE_CERES_AD || COMPARE_WITH_CERES
+                   cost_function = new RepeatingCostFunction(new AutoDiffCostFunction<cerise::MagnetometerErrorQuat,3,4>(
                             new cerise::MagnetometerErrorQuat(dl.m[0],dl.m[1],dl.m[2], 
-                                gps.B[0],gps.B[1],gps.B[2], 0.1));
+                                gps.B[0],gps.B[1],gps.B[2], 0.1)));
 #endif
-#if !USE_CERES_AD || CHECK_WITH_CERES_AD
-                   cost_function = CHECK_COST(new cerise_tex::MagnetometerErrorQuat(dl.m[0],dl.m[1],dl.m[2], gps.B[0],gps.B[1],gps.B[2], 0.1), cost_function);
+#if !USE_CERES_AD || COMPARE_WITH_CERES
+                   cost_function = CHECK_COST(new RepeatingCostFunction(new cerise_tex::MagnetometerErrorQuat(dl.m[0],dl.m[1],dl.m[2], gps.B[0],gps.B[1],gps.B[2], 0.1)), cost_function, magnetometerDuration);
 #endif
                     problem.AddResidualBlock(cost_function,loss_function,oo.rotation);
 
                     if (i>0) {
                         // Smoothness constraint
-#if USE_CERES_AD || CHECK_WITH_CERES_AD
-                        cost_function = new AutoDiffCostFunction<cerise::SmoothnessConstraint,1,1,1>(
-                                new cerise::SmoothnessConstraint(5e1));
+#if USE_CERES_AD || COMPARE_WITH_CERES
+                        cost_function = new RepeatingCostFunction(new AutoDiffCostFunction<cerise::SmoothnessConstraint,1,1,1>(
+                                new cerise::SmoothnessConstraint(5e1)));
 #endif
-#if !USE_CERES_AD || CHECK_WITH_CERES_AD
-                        cost_function = CHECK_COST(new cerise_tex::SmoothnessConstraint(5e1), cost_function);
+#if !USE_CERES_AD || COMPARE_WITH_CERES
+                        cost_function = CHECK_COST(new RepeatingCostFunction(new cerise_tex::SmoothnessConstraint(5e1)), cost_function, smoothnessDuration);
 #endif
 
                         problem.AddResidualBlock(cost_function,NULL,oos.states[i-1].propulsion, oo.propulsion);
@@ -444,12 +504,20 @@ int main(int argc, char *argv[])
 
 
     cerise::OptimiseRotation problem;
+    if(problem.load(FLAGS_input.c_str(),FLAGS_gps.c_str(),FLAGS_num_lines)) {
+      problem.optimise();
 
-    problem.load(FLAGS_input.c_str(),FLAGS_gps.c_str(),FLAGS_num_lines);
+#if COMPARE_WITH_CERES
+      std::cout << "smoothnessDuration=" << std::endl << smoothnessDuration << std::endl; // XXX: debug output of smoothnessDuration
+      std::cout << "accelerometerDuration=" << std::endl << accelerometerDuration << std::endl; // XXX: debug output of accelerometerDuration
+      std::cout << "magnetometerDuration=" << std::endl << magnetometerDuration << std::endl; // XXX: debug output of magnetometerDuration
+#endif
 
-    problem.optimise();
-    if (FLAGS_interactive) {
-        getchar();
+      if (FLAGS_interactive) {
+          getchar();
+      }
+    } else {
+      perror("could not load input");
     }
 
     return 0;

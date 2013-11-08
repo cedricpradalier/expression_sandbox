@@ -104,6 +104,7 @@ rosbuild_add_gtest(test_expressions
 # SET(CGNUPLOT_LIBRARIES cgnuplot)
 
 rosbuild_add_executable(optimise_rotations
+	benchmark/StopWatch.cpp
     seals/optimise_rotations.cpp
     seals/rotation_errors.cpp
     seals/states.cpp
