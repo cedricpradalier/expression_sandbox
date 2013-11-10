@@ -102,6 +102,11 @@ T & toEigen(T&t){
 }
 
 template <typename T>
+const T & toEigen(const T&t){
+  return t;
+}
+
+template <typename T>
 T && toEigen(T&&t){
   return std::move(t);
 }

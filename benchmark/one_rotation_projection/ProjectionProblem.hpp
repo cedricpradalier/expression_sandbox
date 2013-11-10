@@ -9,6 +9,7 @@
 #define PROJECTIONPROBLEM_HPP_
 
 #include <benchmark/Problem.hpp>
+#include <benchmark/EvalVariants.hpp>
 #include <Eigen/Core>
 
 namespace one_rotation_projection_problem {
@@ -33,12 +34,7 @@ struct Input {
   void setRandom();
 };
 
-enum class EvalVariants {
-  Eval,
-  EvalJacobian
-};
-
-std::ostream & operator << (std::ostream & out, const EvalVariants v);
+using benchmark::EvalVariants;
 
 class ProjectionProblem : public benchmark::Problem<ConstInput, Input, Output, ProjectionProblem, EvalVariants>{
 public:
