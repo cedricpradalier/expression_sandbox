@@ -77,6 +77,7 @@ int main(int argc, const char **argv) {
   std::vector<Output> outputs = { {std::cout, 50, "\t", error}, {csv, 1, ",", false} };
 
   for(const Benchmark * bp: Benchmark::getBenchmarks()){
+    if(!bp->getNSolvers()) continue;
     const int refIndex = refSolver.empty() ? -1 : bp->getSolverIndex(refSolver);
 
     for(Output & o : outputs) o.out << "NEW PROBLEM(" << bp->getProblemName() << "):" << std::endl;

@@ -35,6 +35,7 @@ class Benchmark {
   };
 
   virtual std::unique_ptr<Instance> createInstance(int maxVariant, bool verbose = false) const = 0;
+  virtual int getNSolvers() const = 0;
   virtual int getSolverIndex(const std::string name) const = 0;
   virtual std::string getProblemName() const = 0;
 
@@ -227,12 +228,12 @@ void BenchmarkInstance<Problem_>::run(int argc, const char ** argv, int numberOf
   const std::vector<const Solver*> & solverPtrs = ProblemSolver<Problem>::getSolvers();
 
   if(numberOfProblemInstancesToSolve <= 0 || numberOfRepetitions <= 0){
-    std::cerr << "no instances to run" << std::endl;
+    std::cout << "no instances to run" << std::endl;
     return;
   }
 
   if(solverPtrs.size() == 0){
-    std::cerr << "no solvers found" << std::endl;
+    std::cout << "no solvers found" << std::endl;
     return;
   }
 
@@ -284,7 +285,9 @@ class ProblemBenchmark : public Benchmark {
   virtual std::unique_ptr<Instance> createInstance(int maxVariant, bool verbose) const override {
     return std::unique_ptr<Instance>(new BenchmarkInstance<Problem_>(p, maxVariant, verbose));
   }
-
+  virtual int getNSolvers() const{
+    return ProblemSolver<Problem_>::getSolvers().size();
+  }
   virtual int getSolverIndex(const std::string name) const {
     int i = 0;
     for(auto s: ProblemSolver<Problem_>::getSolvers()){
