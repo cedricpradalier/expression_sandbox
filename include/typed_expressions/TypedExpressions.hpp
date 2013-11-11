@@ -12,12 +12,16 @@
 #include <stdexcept>
 #include <memory>
 
+#define TEX_INLINE inline
+#define TEX_STRONG_INLINE __attribute__((always_inline))
+
+
 #ifndef TYPED_EXP_NAMESPACE_POSTFIX
 #define TYPED_EXP_NAMESPACE_POSTFIX
 #endif
 
 #ifndef TYPED_EXP_MAX_DEPTH
-#define TYPED_EXP_MAX_DEPTH 10
+#define TYPED_EXP_MAX_DEPTH 20
 #endif
 
 #define CONCAT(A,B, C) A ## B ## C
