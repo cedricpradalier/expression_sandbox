@@ -50,6 +50,11 @@ int main(int argc, const char **argv) {
             .run(), vm);
   po::notify(vm);
 
+  if (vm.count("help")) {
+    std::cerr << desc << std::endl;
+    return 1;
+  }
+
   using namespace benchmark;
 
 //  if(verbose){
