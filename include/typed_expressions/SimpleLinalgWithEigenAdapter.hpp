@@ -38,11 +38,11 @@ template <typename DERIVED>
 class MatrixBase;
 
 template <typename DERIVED>
-inline auto toEigen(MatrixBase<DERIVED> & m) -> decltype (eigen_linalg::MatrixConvertible<MatrixBase<DERIVED> >::asMatrixConvertible((DERIVED&)m)){
+inline auto toEigen(const MatrixBase<DERIVED> & m) -> decltype (eigen_linalg::MatrixConvertible<MatrixBase<DERIVED> >::asMatrixConvertible((DERIVED&)m)){
   return eigen_linalg::MatrixConvertible<MatrixBase<DERIVED> >::asMatrixConvertible((DERIVED&)m);
 }
 template <typename DERIVED>
-inline auto toEigen(MatrixBase<DERIVED> && m) -> decltype (eigen_linalg::MatrixConvertible<MatrixBase<DERIVED> >::asMatrixConvertible((DERIVED&)m)){
+inline auto toEigen(const MatrixBase<DERIVED> && m) -> decltype (eigen_linalg::MatrixConvertible<MatrixBase<DERIVED> >::asMatrixConvertible((DERIVED&)m)){
   return eigen_linalg::MatrixConvertible<MatrixBase<DERIVED> >::asMatrixConvertible((DERIVED&)m);
 }
 
