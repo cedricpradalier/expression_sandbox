@@ -897,6 +897,8 @@ struct get_op<Minus<A, B, Space_>> {
 
 template <typename Space>
 struct Transformations {
+  inline void updateTransformations(const Space & s) {
+  }
 };
 
 template <typename Cache>
@@ -908,7 +910,7 @@ struct CacheBase {
 
 template <typename Exp, typename Storage = typename get_space<Exp>::type>
 struct Cache : public CacheBase<Cache<Exp, Storage>>, public Transformations<typename get_space<Exp>::type> {
-  inline void update(const Exp &) const { }
+  inline void update(const Exp &exp) { this->updateTransformations(accessValue(exp)); }
   inline auto accessValue(const Exp & exp) const -> decltype(evalExp(exp)){
     if(!std::is_reference<decltype(evalExp(exp))>::value ){
       std::cout << "NotCached::exp=" << std::endl << exp << std::endl; // XXX: debug output of exp
@@ -920,7 +922,7 @@ struct Cache : public CacheBase<Cache<Exp, Storage>>, public Transformations<typ
 template <typename Exp>
 struct Cache<Ref<Exp>> : public CacheBase<Cache<Ref<Exp>>>, public Transformations<typename get_space<Exp>::type> {
   typedef typename get_space<Exp>::type Space;
-  void update(const Ref<Exp> & exp) const { }
+  void update(const Ref<Exp> & exp) { this->updateTransformations(accessValue(exp)); }
   const Space & accessValue(const Ref<Exp> & exp) const { return exp.eval();}
 };
 
@@ -940,6 +942,7 @@ struct Cache<AnyUnOp<A, Exp>, Storage> : public CacheBase<Cache<AnyUnOp<A, Exp>,
   void update(const Exp & exp) {
     a.update(exp.getA());
     value = evalExpCached(exp, *this);
+    this->updateTransformations(accessValue(exp));
   }
   const Space & accessValue(const Exp & exp) const { return value;}
  public:
@@ -959,6 +962,7 @@ struct Cache<AnyBinOp<A, B, Exp>, Storage> : public CacheBase<Cache<AnyBinOp<A, 
     a.update(exp.getA());
     b.update(exp.getB());
     value = evalExpCached(exp, *this);
+    this->updateTransformations(accessValue(exp));
   }
   const Space & accessValue(const Exp & exp) const { return value;}
  public:
