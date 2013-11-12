@@ -457,14 +457,16 @@ template <unsigned diffIndex, unsigned basisIndex, typename A, typename B, typen
 TEX_STRONG_INLINE void evalDiffCached(const AnyBinOp<UnitQuaternion, EuclideanPoint<3>, Rotate<A, B, EuclideanPoint<3>>> & anyExp, Differential & d, Cache &cache)
 {
   auto & exp = anyExp.getExp();
-  const UnitQuaternion & a = cache.a.accessValue(exp.getA());
-  const EuclideanPoint<3> & rotated = cache.accessValue(exp);
-  {
+  if(doesDependOn<diffIndex>(exp.getA())){
+    const EuclideanPoint<3> & rotated = cache.accessValue(exp);
     auto diff = createDiff([&d, &rotated](const UnitQuaternion::TangentVector & vector){ d.apply(vector.cross(rotated) * 2); });
     evalDiffCached<diffIndex, basisIndex>(exp.getA(), diff, cache.a);
   }
-  {
-    auto diff = createDiff([&d, &a](const EuclideanPoint<3> & vector){ d.apply(a.rotate(vector).eval()); });
+  if(doesDependOn<diffIndex>(exp.getB())){
+    const auto & a = cache.a.accessValue(exp.getA());
+//    const auto & aM = cache.a.getMatrix(a);
+
+    auto diff = createDiff([&d, &a](const EuclideanPoint<3> & vector){ d.apply((a.rotate(vector)).eval()); });
     evalDiffCached<diffIndex, basisIndex>(exp.getB(), diff, cache.b);
   }
 }
@@ -484,6 +486,64 @@ TEX_STRONG_INLINE void evalDiffCached(const AnyBinOp<UnitQuaternion, EuclideanPo
     evalDiffCached<diffIndex, basisIndex>(exp.getB(), diff, cache.b);
   }
 }
+
+//template <>
+//struct Transformations<UnitQuaternion>{
+//  const Matrix<double, 3, 3> & getMatrix(const UnitQuaternion & q) {
+//    if(!isTransformed){
+//      const double &a = q[0], &b = q[1], &c = q[2], &d = q[3];
+//      double a2 = a * a;
+//      double b2 = b * b;
+//      double c2 = c * c;
+//      double d2 = d * d;
+//
+//      double a2mb2 = a2 - b2;
+//      double c2md2 = c2 - d2;
+//
+//      double ab = 2 * a * b;
+//      double ac = 2 * a * c;
+//      double ad = 2 * a * d;
+//      double bc = 2 * b * c;
+//      double bd = 2 * b * d;
+//      double cd = 2 * c * d;
+//
+//      R(0, 0) = a2 + b2 - c2 - d2; R(0, 1) = bc - ad; R(0, 2) = bd + ac;
+//      R(1, 0) = bc + ad; R(1, 1) = a2mb2 + c2md2; R(1, 2) = cd - ab;
+//      R(2, 0) = bd - ac; R(2, 1) = cd + ab; R(2, 2) = a2mb2 - c2md2;
+//      isTransformed = true;
+//    }
+//    return R;
+//  }
+// private:
+//  Matrix<double, 3, 3> R;
+//  bool isTransformed;
+//};
+
+
+//
+//template <typename DiffableExp, unsigned DiffIndex, typename Matrix, typename Cache, typename A, typename B, unsigned ADiffIndex>
+//TEX_STRONG_INLINE void evalFullDiffIntoCached(const AnyBinOp<UnitQuaternion, EuclideanPoint<3>, Rotate<Diffable<A, ADiffIndex>, B, EuclideanPoint<3>>> & anyExp, const Diffable<DiffableExp, DiffIndex> & diffable, Cache & cache, Matrix & result) {
+//  typedef Rotate<Diffable<A, ADiffIndex>, B, EuclideanPoint<3>> Exp;
+//  const auto & exp = anyExp.getExp();
+//
+//  if(DiffIndex == ADiffIndex){
+//    Vector<3> rot = cache.accessValue(exp).getValue() * 2;
+//    result(0, 1) += rot[2]; result(0, 2) -= rot[1];
+//    result(1, 0) -= rot[2]; result(1, 2) += rot[0];
+//    result(2, 0) += rot[1]; result(2, 1) -= rot[0];
+//  }
+//  else{ //TODO this needs checking whether ADiffIndex isn't part of exp.getB();
+//    constexpr size_t dimDiffable = get_dim<DiffableExp>::value;
+//    auto & q = cache.a.accessValue(exp.getA());
+//    const linalg::Matrix<double, 3, 3> & R = cache.a.getMatrix(q);
+//
+//    linalg::Matrix<double, 3, dimDiffable> M;
+//    M.setZero();
+//    evalFullDiffIntoCached(exp.getB(), diffable, cache.b, M);
+////    std::cout << "M=" << std::endl << M << std::endl; // XXX: debug output of M
+//    result = R * M;
+//  }
+//}
 
 
 } // namespace TEX_NAMESPACE

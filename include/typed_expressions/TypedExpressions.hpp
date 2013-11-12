@@ -13,15 +13,20 @@
 #include <memory>
 
 #define TEX_INLINE inline
-#define TEX_STRONG_INLINE __attribute__((always_inline))
 
+#ifdef NDEBUG
+//#define TEX_STRONG_INLINE __attribute__((always_inline))
+#define TEX_STRONG_INLINE inline
+#else
+#define TEX_STRONG_INLINE inline
+#endif
 
 #ifndef TYPED_EXP_NAMESPACE_POSTFIX
 #define TYPED_EXP_NAMESPACE_POSTFIX
 #endif
 
 #ifndef TYPED_EXP_MAX_DEPTH
-#define TYPED_EXP_MAX_DEPTH 20
+#define TYPED_EXP_MAX_DEPTH 30
 #endif
 
 #define CONCAT(A,B, C) A ## B ## C
@@ -889,8 +894,20 @@ struct get_op<Minus<A, B, Space_>> {
   typedef typename Minus<A, B, Space_>::OP type;
 };
 
+
+template <typename Space>
+struct Transformations {
+};
+
+template <typename Cache>
+struct CacheBase {
+  Cache & getCache() {
+    return static_cast<Cache&>(*this);
+  }
+};
+
 template <typename Exp, typename Storage = typename get_space<Exp>::type>
-struct Cache {
+struct Cache : public CacheBase<Cache<Exp, Storage>>, public Transformations<typename get_space<Exp>::type> {
   inline void update(const Exp &) const { }
   inline auto accessValue(const Exp & exp) const -> decltype(evalExp(exp)){
     if(!std::is_reference<decltype(evalExp(exp))>::value ){
@@ -901,19 +918,21 @@ struct Cache {
 };
 
 template <typename Exp>
-struct Cache<Ref<Exp>> {
+struct Cache<Ref<Exp>> : public CacheBase<Cache<Ref<Exp>>>, public Transformations<typename get_space<Exp>::type> {
   typedef typename get_space<Exp>::type Space;
   void update(const Ref<Exp> & exp) const { }
   const Space & accessValue(const Ref<Exp> & exp) const { return exp.eval();}
 };
+
 
 template <typename T>
 inline const T & evalExpCached(const T & t, ...){
   return evalExp(t);
 }
 
+
 template <typename A, typename Exp, typename Storage>
-struct Cache<AnyUnOp<A, Exp>, Storage> {
+struct Cache<AnyUnOp<A, Exp>, Storage> : public CacheBase<Cache<AnyUnOp<A, Exp>, Storage>>, public Transformations<typename get_space<Exp>::type> {
   typedef typename get_space<Exp>::type Space;
   Cache() = default;
   Cache(Storage value) : value(value) {}
@@ -931,7 +950,7 @@ struct Cache<AnyUnOp<A, Exp>, Storage> {
 
 
 template <typename A, typename B, typename Exp, typename Storage>
-struct Cache<AnyBinOp<A, B, Exp>, Storage> {
+struct Cache<AnyBinOp<A, B, Exp>, Storage> : public CacheBase<Cache<AnyBinOp<A, B, Exp>, Storage>>, public Transformations<typename get_space<Exp>::type> {
   typedef typename get_space<Exp>::type Space;
   Cache() = default;
   Cache(Storage value) : value(value) {}

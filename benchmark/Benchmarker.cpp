@@ -26,7 +26,7 @@ std::vector<const Benchmark*> Benchmark::benchmarkerRegister;
 
 int main(int argc, const char **argv) {
   bool verbose, error;
-  long unsigned nRuns, nIterations, maxVariant;
+  long unsigned nRuns, nIterations, maxVariant, repIncreaseFactor;
   std::string refSolver;
 
   po::options_description desc("benchmark options");
@@ -36,6 +36,7 @@ int main(int argc, const char **argv) {
           ("error,e", po::value(&error)->default_value(DEFAULT_SHOW_ERROR), "calculate and show error statistics")
           ("nRuns,n", po::value(&nRuns)->default_value(DEFAULT_NRUNS), "number of total runs per benchmark")
           ("iterations,i", po::value(&nIterations)->default_value(1), "number of iterations per problem instance and solver")
+          ("itIncreaseFactor,f", po::value(&repIncreaseFactor)->default_value(1000), "factor to increase iterations")
           ("maxVariant,m", po::value(&maxVariant)->default_value(100), "maximal variant index")
           ("ref,r", po::value(&refSolver)->default_value(""), "reference solver name")
           ;
@@ -87,7 +88,7 @@ int main(int argc, const char **argv) {
 
     for(Output & o : outputs) o.out << "NEW PROBLEM(" << bp->getProblemName() << "):" << std::endl;
 
-    for(unsigned long long numberOfRepetitions = nIterations ; numberOfRepetitions <= nRuns; numberOfRepetitions *= 1000){
+    for(unsigned long long numberOfRepetitions = nIterations; numberOfRepetitions <= nRuns; numberOfRepetitions *= repIncreaseFactor){
       if(!nRuns || !numberOfRepetitions) continue;
       int numberOfProblemInstancesToSolve = nRuns / numberOfRepetitions;
 

@@ -334,7 +334,7 @@ struct get_op<Segment<A, SegmentSize, EuclideanPoint<SegmentSize>>> {
 
 
 template <typename A, MatrixSize SegmentSize>
-struct Cache<Segment<A, SegmentSize, EuclideanPoint<SegmentSize>>> {
+struct Cache<Segment<A, SegmentSize, EuclideanPoint<SegmentSize>>> : public CacheBase <Cache<Segment<A, SegmentSize, EuclideanPoint<SegmentSize>>>> {
   typedef Segment<A, SegmentSize, EuclideanPoint<SegmentSize>> Exp;
   typedef EuclideanPoint<SegmentSize> Space;
   Cache<typename get_op<A>::type> a;
@@ -398,7 +398,7 @@ inline void evalDiffCached(const AnyBinOp<EuclideanPoint<Dim_>, typename Euclide
   typedef typename EuclideanPoint<Dim_>::ScalarSpace Scalar;
 
   auto && point = cache.a.accessValue(exp.getA());
-  Scalar scalar = exp.getB();
+  Scalar scalar = evalExp(exp.getB());
   {
     auto diff = createDiff([&d, scalar](const TangentVector & vector){ d.apply((vector * scalar).eval()); });
     evalDiffCached<diffIndex, basisIndex>(exp.getA(), diff, cache.a);

@@ -18,13 +18,17 @@ struct get_tangent_space {
 };
 
 template <typename Exp, unsigned DiffIndex>
-struct Diffable : public Exp, public AnyExp<typename get_space<Exp>::type, Diffable<Exp, DiffIndex>> {
+struct Diffable : public AnyExp<typename get_space<Exp>::type, Diffable<Exp, DiffIndex>> {
   typedef typename get_space<Exp>::type Space;
 
-  Diffable(const Exp & e) : Exp(e) {}
+  Diffable(const Exp & e) : exp(e) {}
 
   TEX_STRONG_INLINE const Space eval() const {
     return evalImpl();
+  }
+
+  operator const Exp & () const {
+    return exp;
   }
 
   const Exp & getExp() const {
@@ -39,6 +43,8 @@ struct Diffable : public Exp, public AnyExp<typename get_space<Exp>::type, Diffa
     out << "Diffable" << DiffIndex <<  ":" << (diffable.getExp());
     return out;
   }
+ private:
+  Exp exp;
 };
 
 namespace internal {
@@ -95,12 +101,38 @@ class ToVectorDifferential {
 };
 
 
+
+template <unsigned DiffIndex, typename Space, typename = typename std::enable_if<std::is_same<Space,typename get_space<Space>::type>::value>::type> //TODO optimize : introduce is_space function
+inline bool doesDependOn(const Space &) {
+  return false;
+}
+
+template <unsigned DiffIndex, typename Space>
+inline bool doesDependOn(const Ref<Space> &) {
+  return false;
+}
+
+template <unsigned DiffIndex, typename Exp, unsigned OtherDiffIndex>
+inline bool doesDependOn(const Diffable<Exp, OtherDiffIndex> &) {
+  return DiffIndex == OtherDiffIndex;
+}
+
+template <unsigned DiffIndex, typename Exp, typename A>
+inline bool doesDependOn(const AnyUnOp<A, Exp> &binOp) {
+  return doesDependOn(binOp.getA());
+}
+
+template <unsigned DiffIndex, typename Exp, typename A, typename B>
+inline bool doesDependOn(const AnyBinOp<A, B, Exp> &binOp) {
+  return doesDependOn<DiffIndex>(binOp.getExp().getA()) || doesDependOn<DiffIndex>(binOp.getExp().getB());
+}
+
 template <unsigned EvalDiffIndex, unsigned BasisIndex, typename Space, typename Differential, typename = typename std::enable_if<std::is_same<Space,typename get_space<Space>::type>::value>::type>
-void evalDiff(const Space &, Differential & differential) {
+inline void evalDiff(const Space &, Differential & differential) {
 }
 
 template <unsigned EvalDiffIndex, unsigned BasisIndex, typename Space, unsigned DiffIndex, typename Differential>
-void evalDiff(const Diffable<Space, DiffIndex> &, Differential & differential) {
+inline void evalDiff(const Diffable<Space, DiffIndex> &, Differential & differential) {
   if(DiffIndex == EvalDiffIndex){
     differential.apply(get_tangent_space<typename get_space<Space>::type>::type::template getBasisVector<BasisIndex>());
   }
@@ -158,13 +190,19 @@ inline DiffFunctor<Functor> createDiff(const Functor & applyFunc){
   return DiffFunctor<Functor>(applyFunc);
 }
 
-template <typename Exp, unsigned DiffIndex>
-struct Cache<Diffable<Exp, DiffIndex>> : public Cache<Exp> {
+template <typename Exp, typename Storage, unsigned DiffIndex>
+struct Cache<Diffable<Exp, DiffIndex>, Storage> : public Cache<Exp, Storage> {
 };
 
 template <unsigned EvalDiffIndex, unsigned BasisIndex, typename Space, typename Differential, typename Cache, typename = typename std::enable_if<std::is_same<Space,typename get_space<Space>::type>::value>::type>
 void evalDiffCached(const Space &, Differential & differential, Cache &) {
 }
+
+
+template <unsigned EvalDiffIndex, unsigned BasisIndex, typename Space, typename Differential, typename Cache>
+void evalDiffCached(const Ref<Space> &, Differential & differential, Cache &) {
+}
+
 
 template <unsigned EvalDiffIndex, unsigned BasisIndex, typename Space, unsigned DiffIndex, typename Differential, typename Cache>
 TEX_STRONG_INLINE void evalDiffCached(const Diffable<Space, DiffIndex> &, Differential & differential, Cache &) {
@@ -173,15 +211,14 @@ TEX_STRONG_INLINE void evalDiffCached(const Diffable<Space, DiffIndex> &, Differ
   }
 }
 
-
-template <typename Exp, typename DiffableExp, unsigned DiffIndex, typename Matrix, typename Cache, unsigned MaxBasisIndex = get_dim<DiffableExp>::value - 1>
-TEX_STRONG_INLINE void evalFullDiffIntoCached(const Exp & exp, const Diffable<DiffableExp, DiffIndex> & diffable, Cache & cache, Matrix & result);
+template <typename Exp, typename Space, typename DiffableExp, unsigned DiffIndex, typename Matrix, typename Cache, unsigned MaxBasisIndex = get_dim<DiffableExp>::value - 1>
+TEX_STRONG_INLINE void evalFullDiffIntoCached(const AnyExp<Space, Exp> & exp, const Diffable<DiffableExp, DiffIndex> & diffable, CacheBase<Cache> & cache, Matrix & result);
 
 namespace internal {
   template <typename Exp, typename DiffableExp, unsigned DiffIndex, unsigned MaxBasisIndex, typename Matrix, typename Cache>
   struct NextDiffEvaluatorCached {
     TEX_STRONG_INLINE void operator()(const Exp & exp, const Diffable<DiffableExp, DiffIndex>  & diffable, Cache & cache, Matrix & result){
-      evalFullDiffIntoCached<Exp, DiffableExp, DiffIndex, Matrix, Cache, MaxBasisIndex - 1>(exp, diffable, cache, result);
+      evalFullDiffIntoCached<Exp, typename get_space<Exp>::type, DiffableExp, DiffIndex, Matrix, Cache, MaxBasisIndex - 1>(exp, diffable, cache, result);
     }
   };
 
@@ -191,13 +228,14 @@ namespace internal {
     }
   };
 }
-template <typename Exp, typename DiffableExp, unsigned DiffIndex, typename Matrix, typename Cache, unsigned MaxBasisIndex>
-TEX_STRONG_INLINE void evalFullDiffIntoCached(const Exp & exp, const Diffable<DiffableExp, DiffIndex> & diffable, Cache & cache, Matrix & result) {
+template <typename Exp, typename Space, typename DiffableExp, unsigned DiffIndex, typename Matrix, typename Cache, unsigned MaxBasisIndex>
+TEX_STRONG_INLINE void evalFullDiffIntoCached(const AnyExp<Space, Exp> & anyExp, const Diffable<DiffableExp, DiffIndex> & diffable, CacheBase<Cache> & cache, Matrix & result) {
+  auto & exp = anyExp.getExp();
   constexpr size_t dim = get_dim<Exp>::value;
   auto block = result.template block<dim, 1>(0, MaxBasisIndex);
   ToVectorDifferential<typename get_space<Exp>::type, decltype(block)> diff(block);
-  evalDiffCached<DiffIndex, MaxBasisIndex>(exp, diff, cache);
-  internal::NextDiffEvaluatorCached<Exp, DiffableExp, DiffIndex, MaxBasisIndex, decltype(result), Cache>()(exp, diffable, cache, result);
+  evalDiffCached<DiffIndex, MaxBasisIndex>(exp, diff, cache.getCache());
+  internal::NextDiffEvaluatorCached<Exp, DiffableExp, DiffIndex, MaxBasisIndex, decltype(result), Cache>()(exp, diffable, cache.getCache(), result);
 }
 
 template <typename Exp, typename DiffableExp, unsigned DiffIndex, typename Cache>

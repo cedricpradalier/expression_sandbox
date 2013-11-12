@@ -82,7 +82,7 @@ rosbuild_add_executable(benchmarker
 	benchmark/EvalVariants.cpp
 	benchmark/Benchmarker.cpp
 	${N_ROTATIONS}
-#	${ONE_ROTATION_PROJECTION}
+	${ONE_ROTATION_PROJECTION}
 #	${TWO_ROTATIONS_PROJECTION}
 )
 
