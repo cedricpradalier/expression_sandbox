@@ -52,23 +52,42 @@ add_executable(TestTypedExpresssions src/TestTypedExpressions.cpp)
 
 
 
-rosbuild_add_executable(benchmarker 
-	benchmark/malloc_count.c
-	benchmark/StopWatch.cpp
-	benchmark/EvalVariants.cpp
-	benchmark/Benchmarker.cpp
 
+set(ONE_ROTATION_PROJECTION
 	benchmark/one_rotation_projection/ProjectionProblem.cpp
 	benchmark/one_rotation_projection/GeneratedExpressionSolver.cpp
 	benchmark/one_rotation_projection/TypedExpressionSolverDepth10Eig.cpp
 	benchmark/one_rotation_projection/CeresExpressionSolver.cpp
 	benchmark/one_rotation_projection/HandTunedExpressionSolver.cpp
+)
 
+set(TWO_ROTATIONS_PROJECTION
 	benchmark/two_rotations_projection/ProjectionProblem.cpp
 	benchmark/two_rotations_projection/GeneratedExpressionSolver.cpp
 	benchmark/two_rotations_projection/TypedExpressionSolverDepth10Eig.cpp
 	benchmark/two_rotations_projection/CeresExpressionSolver.cpp
 )
+set(N_ROTATIONS
+	benchmark/N_rotations/RotationProblem.cpp
+	benchmark/N_rotations/HandTunedExpressionSolver.cpp
+	benchmark/N_rotations/TypedExpressionSolverDepth10Eig.cpp
+	benchmark/N_rotations/CeresExpressionSolver.cpp
+)
+#	benchmark/N_rotations/TypedExpressionSolverDepth10Simp.cpp
+
+
+rosbuild_add_executable(benchmarker 
+	benchmark/malloc_count.c
+	benchmark/StopWatch.cpp
+	benchmark/EvalVariants.cpp
+	benchmark/Benchmarker.cpp
+	${N_ROTATIONS}
+#	${ONE_ROTATION_PROJECTION}
+#	${TWO_ROTATIONS_PROJECTION}
+)
+
+
+
 target_link_libraries(benchmarker dl rt)
 #set_target_properties(benchmarker PROPERTIES COMPILE_FLAGS "-finline-limit=10000000")
 target_link_libraries(benchmarker boost_program_options)
