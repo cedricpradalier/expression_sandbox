@@ -20,6 +20,8 @@ namespace rdtsc {
   std::uint64_t now ();
   double toDouble(const decltype(now()- now()) & dur);
   std::string getUnitString();
+  inline std::uint64_t getMaxDuration() { return std::numeric_limits<std::uint64_t>::max(); }
+  inline std::uint64_t getMinDuration() { return 0; }
 }
 
 namespace hpet {
@@ -56,11 +58,22 @@ class StopWatch {
     typedef decltype(now() - now()) DurationType;
     DurationType duration;
 
+    Duration(bool initWithMaxDuration = false) : duration(initWithMaxDuration ? getMaxDuration() : getMinDuration()){}
+    inline Duration(const Duration &) = default;
+    inline Duration(DurationType d) : duration(d){}
+
     void operator += (const Duration & d) {
       duration += d.duration;
     };
     void operator -= (const Duration & d) {
       duration -= d.duration;
+    };
+
+    bool operator > (const Duration & d) const {
+      return duration > d.duration;
+    };
+    bool operator < (const Duration & d) const {
+      return duration < d.duration;
     };
 
     operator double () const {
@@ -69,7 +82,7 @@ class StopWatch {
   };
 
   inline Duration read() {
-    return { now() - startTime };
+    return now() - startTime;
   }
 
   Duration readAndReset() { auto r = read(); reset(); return r;}

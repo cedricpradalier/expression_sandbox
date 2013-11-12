@@ -27,7 +27,7 @@ class Benchmark {
 
   class Instance {
    public:
-    virtual void run(int argc, const char ** argv, int numberOfProblemInstancesToSolve, int numberOfRepetitions) = 0;
+    virtual void run(int argc, const char ** argv, int numberOfProblemInstancesToSolve, int numberOfRepetitions, unsigned ensembleSize) = 0;
     virtual void calcErrorStat() = 0;
     virtual void printHeader(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors = true, bool relative = false) const = 0;
     virtual void printStat(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors = true, int refSolverIndex = -1) const = 0;
@@ -57,7 +57,7 @@ class BenchmarkInstance : public Benchmark::Instance {
 
   BenchmarkInstance(const Problem & p, int maxVariant, bool verbose = false) : p(p), verbose(verbose), maxVariant(maxVariant) {}
 
-  virtual void run(int argc, const char ** argv, int numberOfProblemInstancesToSolve, int numberOfRepetitions);
+  virtual void run(int argc, const char ** argv, int numberOfProblemInstancesToSolve, int numberOfRepetitions, unsigned ensembleSize);
   virtual void calcErrorStat();
   virtual void printHeader(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors, bool relative) const;
   virtual void printStat(std::ostream& out, const int nameWidth, const std::string& sep, bool showErrors, int refSolverIndex) const;
@@ -117,7 +117,7 @@ class BenchmarkInstance : public Benchmark::Instance {
     void calc();
 
     struct SolvingVariantStat {
-      SolvingVariantStat(): mean(0), svar(0) {}
+      SolvingVariantStat(): durationSolving(true), mean(0), svar(0) {}
       void calc();
       typename StopWatch::Duration durationSolving;
       std::vector<double> errors;
@@ -224,7 +224,7 @@ void BenchmarkInstance<Problem_>::printStat(std::ostream& out, const int nameWid
 }
 
 template <typename Problem_>
-void BenchmarkInstance<Problem_>::run(int argc, const char ** argv, int numberOfProblemInstancesToSolve, int numberOfRepetitions){
+void BenchmarkInstance<Problem_>::run(int argc, const char ** argv, int numberOfProblemInstancesToSolve, int numberOfRepetitions, unsigned ensembleSize){
   const std::vector<const Solver*> & solverPtrs = ProblemSolver<Problem>::getSolvers();
 
   if(numberOfProblemInstancesToSolve <= 0 || numberOfRepetitions <= 0){
@@ -246,18 +246,24 @@ void BenchmarkInstance<Problem_>::run(int argc, const char ** argv, int numberOf
   createSolverInstances();
   if(verbose) std::cout << "createSolverInstances:" << stopWatch.readAndReset() << std::endl;
 
-  for(auto variant : p.getVariants()){
-    if((int)variant > maxVariant) break;
-    for(SolverData & sd : solverData) {
-      StopWatch stopWatch;
-      for(size_t i = 0, end = problemInstances.size(); i < end; i++) {
-        for(int rep = 0; rep < numberOfRepetitions; rep ++){
-          sd.instances[i]->solveInto(problemInstances[i]->getInput(), sd.outputs[i], variant);
+  for(unsigned e = 0; e < ensembleSize; e++){
+    for(auto variant : p.getVariants()){
+      if((int)variant > maxVariant) break;
+      for(SolverData & sd : solverData) {
+        StopWatch stopWatch;
+        for(size_t i = 0, end = problemInstances.size(); i < end; i++) {
+          for(int rep = 0; rep < numberOfRepetitions; rep ++){
+            sd.instances[i]->solveInto(problemInstances[i]->getInput(), sd.outputs[i], variant);
+          }
+        }
+        auto d = stopWatch.read();
+        auto & ss = sd.stat[variant].durationSolving;
+        if(ss > d){
+          ss = d;
         }
       }
-      sd.stat[variant].durationSolving = stopWatch.read();
+      if(verbose) std::cout << "runningSolverInstances took:" << stopWatch.readAndReset() << std::endl;
     }
-    if(verbose) std::cout << "runningSolverInstances took:" << stopWatch.readAndReset() << std::endl;
   }
 }
 
