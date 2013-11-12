@@ -52,9 +52,14 @@ public:
   static void calcSolutionInto(const Input<N> & input, Output<N> & output);
 };
 
-#define CREATE_INSTANCES(PREFIX, POSTFIX, NAME) \
-PREFIX 1 POSTFIX NAME##1;
-//*/
+#ifndef ROTATIONS_N
+#error "ROTATIONS_N not defined"
+#define ROTATIONS_N 1
+#endif
+
+#define CONCAT2_(A, B) A ## B
+#define CREATE_INSTANCES_(PREFIX, POSTFIX, NAME, NUM) PREFIX NUM POSTFIX CONCAT2_(NAME, NUM);
+#define CREATE_INSTANCES(PREFIX, POSTFIX, NAME) CREATE_INSTANCES_(PREFIX, POSTFIX, NAME, ROTATIONS_N)
 
 }
 

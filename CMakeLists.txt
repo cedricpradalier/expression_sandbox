@@ -67,14 +67,40 @@ set(TWO_ROTATIONS_PROJECTION
 	benchmark/two_rotations_projection/TypedExpressionSolverDepth10Eig.cpp
 	benchmark/two_rotations_projection/CeresExpressionSolver.cpp
 )
-set(N_ROTATIONS
-	benchmark/N_rotations/RotationProblem.cpp
-	benchmark/N_rotations/HandTunedExpressionSolver.cpp
-	benchmark/N_rotations/TypedExpressionSolverDepth10Eig.cpp
-	benchmark/N_rotations/CeresExpressionSolver.cpp
+set(1_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.1.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.1.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.1.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.1.cpp
 )
-#	benchmark/N_rotations/TypedExpressionSolverDepth10Simp.cpp
+#	benchmark/N_rotations/TypedExpressionSolverDepth10Simp.cpp.1.cpp
+set(2_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.2.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.2.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.2.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.2.cpp
+)
 
+
+set(19_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.19.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.19.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.19.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.19.cpp
+)
+set(20_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.20.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.20.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.20.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.20.cpp
+)
+#	benchmark/N_rotations/TypedExpressionSolverDepth10Simp.cpp.20.cpp
+
+
+set(N_ROTATIONS
+	${1_ROTATIONS}
+	${19_ROTATIONS}
+)
 
 rosbuild_add_executable(benchmarker 
 	benchmark/malloc_count.c
