@@ -434,7 +434,7 @@ class CoeffwiseTimes : public BinOpBase<A, B, Space_, CoeffwiseTimes<A, B, Space
 
   friend
   std::ostream & operator << (std::ostream & out, const CoeffwiseTimes & op) {
-    return out << "(" << op.getA() << " * " << op.getB() << ")";
+    return out << "(" << op.getA() << " .* " << op.getB() << ")";
   }
 };
 
