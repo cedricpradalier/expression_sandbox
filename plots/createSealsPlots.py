@@ -8,29 +8,47 @@ from pylab import *;
 
 gTToSecFactor = 1.0/3.8 
 
+ceres_color = 'r'; #'0.7629,0.1073,0.4411'
+tex_color = 'g';
+ceres_name = "dual n. AD"
+tex_name = "BAD"
+
 color={
-       'ceres' : 'y', 
+       'ceres' : ceres_color, 
        'ceres_m' : '', 
-       'ceres_mp' : 'r', 
-       'tex' : 'b',
+       'ceres_mp' : ceres_color, 
+       'tex' : tex_color,
        'tex_m' : '',
-       'tex_mp' : 'g',
+       'tex_mp' : tex_color,
        }
 linestyle={
-           'RT' : 'dotted', 
-           'RTmax' : '-.', 
-           'JT' : '-',
-           'JTmax' : 'dashed'
+           'ceresRT' : 'dashed', 
+           'ceresRTmax' : 'dashed', 
+           'ceresJT' : 'dashed',
+           'ceresJTmax' : 'dashed',
+           'texRT' : '-', 
+           'texRTmax' : 'dashed', 
+           'texJT' : '-',
+           'texJTmax' : 'dashed',
         }
 
 
 data = {'ceres' : dict(), 'tex' : dict(), 'tex_m' : dict(), 'ceres_m' : dict(), 'tex_mp' : dict(), 'ceres_mp' : dict()}
-title = {'ceres' : "ceres", 'tex' : 'tex', 'tex_m' : 'tex_m', 'ceres_m' : 'ceres_m', 'tex_mp' : 'tex_calc', 'ceres_mp' : 'ceres_calc'}
+
+
+title = {
+ 'ceres' : ceres_name,
+ 'ceres_m' : ceres_name,
+ 'ceres_mp' : ceres_name,
+ 'tex' : tex_name,
+ 'tex_m' : tex_name,
+ 'tex_mp' : tex_name,
+}
 timeTitle = {
-           'RT' : 'Residuals', 
-           'RTmax' : 'Residuals Max', 
-           'JT' : 'Jacobians',
-           'JTmax' : 'Jacobians Max'
+   'RT' : 'Residuals', 
+   'RTmax' : 'Residuals Max', 
+   'JT' : 'Jacobians',
+   'JTmax' : 'Jacobians Max'
 }
 
 reader = csv.reader(open("../seals/stat.csv", "rb"));
@@ -62,22 +80,35 @@ for row in list(reader) :
         update(data[name+ "p"] , 'RT', N, RTP * gTToSecFactor)
         update(data[name+ "p"] , 'JT', N, JTP * gTToSecFactor)
 
-fig, axes = plt.subplots(figsize = (20, 10));
+for i in range(1, 16) :
+    i *= 10000;
+    print i, ":", data['ceres_m']['JT'][i][0] / data['tex_m']['JT'][i][0];
+    print i, ":", data['tex']['JT'][i][0] / data['ceres']['JT'][i][0];
 
-for name, d in data.iteritems() :
-    for timeId, dd in sorted(d.iteritems()) :
-        if not color[name] : continue
-        a = numpy.array([ (x[0], x[1][0], x[1][1]) for x in list(sorted(dd.items()))]).transpose();
-        #axes.plot(a[0], a[2], color[name], linestyle=linestyle[timeId + "max"], label = ("%s:%s" % (title[name], timeTitle[timeId])))
-        axes.plot(a[0], a[1], color[name], linestyle=linestyle[timeId], label = ("%s:%s" % (title[name], timeTitle[timeId])))
 
 for i in range(1, 16) :
     i *= 10000;
     print i, ":", data['ceres_mp']['JT'][i][0] / data['tex_mp']['JT'][i][0];
+    print i, ":", data['tex_mp']['JT'][i][0] / data['ceres_mp']['JT'][i][0];
 
-axes.set_xlabel('N')
-axes.set_ylabel('t')
-axes.set_title('title');
-axes.legend(loc='upper left')
-savefig('seals_optimization_stat.pdf')
+
+for timeId in ('JT', 'RT') :
+    for suffix in ('', '_mp') :
+        fig, axes = plt.subplots(figsize = (4, 4));
+        
+        for var in ('ceres', 'tex'):
+            name = var + suffix
+            d = data[name];
+            if not color[name] : continue
+            dd = d[timeId];
+            a = numpy.array([ (x[0], x[1][0], x[1][1]) for x in list(sorted(dd.items()))]).transpose();
+#             axes.plot(a[0] / 1000, a[2], color[name], linestyle=linestyle[timeId + "max"], label = ("%s" % (title[name])))
+            axes.plot(a[0] / 1000, a[1], color[name], linestyle=linestyle[var + timeId], label = ("%s" % (title[name])))
+    
+        axes.set_xlabel('N in 1000 input lines')
+        axes.set_ylabel('t in seconds')
+        axes.legend(loc='upper left')
+        savefig("seals_optimization_stat%s_%s.pdf" % (suffix, timeId))
+    
 show()
+
