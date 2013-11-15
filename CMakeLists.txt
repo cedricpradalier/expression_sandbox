@@ -73,15 +73,108 @@ set(1_ROTATIONS
 	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.1.cpp
 	benchmark/N_rotations/N/CeresExpressionSolver.cpp.1.cpp
 )
-#	benchmark/N_rotations/TypedExpressionSolverDepth10Simp.cpp.1.cpp
 set(2_ROTATIONS
 	benchmark/N_rotations/N/RotationProblem.cpp.2.cpp
 	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.2.cpp
 	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.2.cpp
 	benchmark/N_rotations/N/CeresExpressionSolver.cpp.2.cpp
 )
-
-
+set(3_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.3.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.3.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.3.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.3.cpp
+)
+set(4_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.4.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.4.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.4.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.4.cpp
+)
+set(5_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.5.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.5.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.5.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.5.cpp
+)
+set(6_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.6.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.6.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.6.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.6.cpp
+)
+set(7_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.7.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.7.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.7.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.7.cpp
+)
+set(8_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.8.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.8.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.8.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.8.cpp
+)
+set(9_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.9.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.9.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.9.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.9.cpp
+)
+set(10_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.10.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.10.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.10.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.10.cpp
+)
+set(11_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.11.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.11.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.11.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.11.cpp
+)
+set(12_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.12.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.12.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.12.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.12.cpp
+)
+set(13_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.13.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.13.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.13.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.13.cpp
+)
+set(14_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.14.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.14.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.14.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.14.cpp
+)
+set(15_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.15.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.15.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.15.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.15.cpp
+)
+set(16_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.16.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.16.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.16.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.16.cpp
+)
+set(17_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.17.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.17.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.17.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.17.cpp
+)
+set(18_ROTATIONS
+	benchmark/N_rotations/N/RotationProblem.cpp.18.cpp
+	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.18.cpp
+	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.18.cpp
+	benchmark/N_rotations/N/CeresExpressionSolver.cpp.18.cpp
+)
 set(19_ROTATIONS
 	benchmark/N_rotations/N/RotationProblem.cpp.19.cpp
 	benchmark/N_rotations/N/HandTunedExpressionSolver.cpp.19.cpp
@@ -94,12 +187,28 @@ set(20_ROTATIONS
 	benchmark/N_rotations/N/TypedExpressionSolverDepth10Eig.cpp.20.cpp
 	benchmark/N_rotations/N/CeresExpressionSolver.cpp.20.cpp
 )
-#	benchmark/N_rotations/TypedExpressionSolverDepth10Simp.cpp.20.cpp
-
 
 set(N_ROTATIONS
 	${1_ROTATIONS}
+	${2_ROTATIONS}
+	${3_ROTATIONS}
+	${4_ROTATIONS}
+	${5_ROTATIONS}
+	${6_ROTATIONS}
+	${7_ROTATIONS}
+	${8_ROTATIONS}
+	${9_ROTATIONS}
+	${10_ROTATIONS}
+	${11_ROTATIONS}
+	${12_ROTATIONS}
+	${13_ROTATIONS}
+	${14_ROTATIONS}
+	${15_ROTATIONS}
+	${16_ROTATIONS}
+	${17_ROTATIONS}
+	${18_ROTATIONS}
 	${19_ROTATIONS}
+	${20_ROTATIONS}
 )
 
 rosbuild_add_executable(benchmarker 
@@ -107,8 +216,8 @@ rosbuild_add_executable(benchmarker
 	benchmark/StopWatch.cpp
 	benchmark/EvalVariants.cpp
 	benchmark/Benchmarker.cpp
-	${N_ROTATIONS}
-	${ONE_ROTATION_PROJECTION}
+#	${N_ROTATIONS}
+#	${ONE_ROTATION_PROJECTION}
 #	${TWO_ROTATIONS_PROJECTION}
 )
 
@@ -149,11 +258,35 @@ rosbuild_add_gtest(test_expressions
 # LINK_DIRECTORIES(${CGNUPLOT}/lib)
 # SET(CGNUPLOT_LIBRARIES cgnuplot)
 
-rosbuild_add_executable(optimise_rotations
+rosbuild_add_executable(optimise_rotations_tex
+    benchmark/StopWatch.cpp
+    seals/optimise_rotations.cpp
+    seals/rotation_errors.cpp
+    seals/states.cpp
+)
+rosbuild_add_executable(optimise_rotations_ceres
 	benchmark/StopWatch.cpp
     seals/optimise_rotations.cpp
     seals/rotation_errors.cpp
     seals/states.cpp
 )
+set_target_properties(optimise_rotations_ceres PROPERTIES COMPILE_FLAGS "-DUSE_CERES_AD=1")
+
+rosbuild_add_executable(optimise_rotations_tex_m
+    benchmark/StopWatch.cpp
+    seals/optimise_rotations.cpp
+    seals/rotation_errors.cpp
+    seals/states.cpp
+)
+set_target_properties(optimise_rotations_tex_m PROPERTIES COMPILE_FLAGS "-DMEASURE_IN_REPEAT=1")
+
+rosbuild_add_executable(optimise_rotations_ceres_m
+	benchmark/StopWatch.cpp
+    seals/optimise_rotations.cpp
+    seals/rotation_errors.cpp
+    seals/states.cpp
+)
+set_target_properties(optimise_rotations_ceres_m PROPERTIES COMPILE_FLAGS "-DUSE_CERES_AD=1 -DMEASURE_IN_REPEAT=1")
+
 #target_link_libraries(optimise_rotations ${CERES_LIBRARIES} ${CGNUPLOT_LIBRARIES})
 

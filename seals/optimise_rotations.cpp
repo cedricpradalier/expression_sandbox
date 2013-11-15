@@ -11,9 +11,13 @@
 
 #include <benchmark/StopWatch.hpp>
 
+
+#define Repetitions 1
+
 //#define USE_CERES_AD 1
 //#define COMPARE_WITH_CERES 1
 //#define COMPARE_VALUES 1
+//#define MEASURE_IN_REPEAT 1
 
 #if USE_CERES_AD
 #include "rotation_errors.h"
@@ -73,9 +77,23 @@ DEFINE_bool(mag,false,"Estimate the magnetic field vector");
 DEFINE_string(solver_log, "", "File to record the solver execution to.");
 
 
-constexpr int Repetitions = 1;
-
 using namespace ceres;
+
+
+struct Durations {
+  stop_watch::StopWatch::Duration aDuration, bDuration, nopDuration;
+  friend ostream & operator << (ostream & out, const Durations & p){
+    out << "a=" << p.aDuration - p.nopDuration << std::endl << "b=" << p.bDuration - p.nopDuration << std::endl<< "nop=" << p.nopDuration;
+    return out;
+  }
+} smoothnessDuration, magnetometerDuration, accelerometerDuration;
+
+stop_watch::StopWatch::Duration jacobiansDuration;
+stop_watch::StopWatch::Duration residualsDuration;
+
+stop_watch::StopWatch stopWatch;
+
+
 
 struct RepeatingCostFunction : public CostFunction {
   RepeatingCostFunction(CostFunction * a) : a(a){
@@ -87,11 +105,20 @@ struct RepeatingCostFunction : public CostFunction {
                         double* residuals,
                         double** jacobians) const {
 
+#if MEASURE_IN_REPEAT
+    stopWatch.reset();
+#endif
     for(int i = Repetitions; i > 0; i--){
       if(!a->Evaluate(parameters, residuals, jacobians)){
         return false;
       }
     }
+#if MEASURE_IN_REPEAT
+    stop_watch::StopWatch::Duration & d = jacobians ? jacobiansDuration : residualsDuration;
+    d += stopWatch.readAndReset();
+    stopWatch.reset(); // subtract clock overhead
+    d -= stopWatch.readAndReset();
+#endif
     return true;
   }
   virtual ~RepeatingCostFunction() {
@@ -101,22 +128,20 @@ struct RepeatingCostFunction : public CostFunction {
   CostFunction *a;
 };
 
+inline CostFunction * wrapRepeatingCostFunction(CostFunction *c){
+#if Repetitions > 1 || MEASURE_IN_REPEAT
+  return new RepeatingCostFunction(c);
+#else
+  return c;
+#endif
+}
 
-struct DurationPair {
-  stop_watch::StopWatch::Duration aDuration, bDuration, nopDuration;
-  friend ostream & operator << (ostream & out, const DurationPair & p){
-    out << "a=" << p.aDuration - p.nopDuration << std::endl << "b=" << p.bDuration - p.nopDuration << std::endl<< "nop=" << p.nopDuration;
-    return out;
-  }
-} smoothnessDuration, magnetometerDuration, accelerometerDuration;
 
-stop_watch::StopWatch stopWatch;
-stop_watch::CollectingStopWatch unfairStopWatch;
 
 struct ComparingCostFunction : public CostFunction {
 
 
-  ComparingCostFunction(CostFunction * a, CostFunction * b, DurationPair & durationPair) : a(a), b(b), durationPair(durationPair){
+  ComparingCostFunction(CostFunction * a, CostFunction * b, Durations & durationPair) : a(a), b(b), durationPair(durationPair){
     set_num_residuals(a->num_residuals());
     CHECK_EQ(num_residuals(), b->num_residuals());
     *mutable_parameter_block_sizes() = a->parameter_block_sizes();
@@ -150,8 +175,6 @@ struct ComparingCostFunction : public CostFunction {
       return false;
     }
     durationPair.aDuration += stopWatch.readAndReset();
-    auto && d = unfairStopWatch.getAndForgetCollected();
-    durationPair.aDuration -= d;
 
     double bResiduals[num_residuals()];
     double *bJacobiansData[parameter_block_sizes().size()], **bJacobians = jacobians ? bJacobiansData : nullptr;
@@ -173,20 +196,20 @@ struct ComparingCostFunction : public CostFunction {
 
 #if COMPARE_VALUES
     std::cout << "residuals=";
-    printDoubles(std::cout, residuals, num_residuals());
-    std::cout << std::endl; // XXX: debug output of residuals
+    printDoubles(std::cout, residualsDuration, num_residuals());
+    std::cout << std::endl; // XXX: debug output of residualsDuration
 
     std::cout << "bResiduals=";
     printDoubles(std::cout, bResiduals, num_residuals());
-    std::cout << std::endl; // XXX: debug output of residuals
-    checkDoublesNear(residuals, bResiduals, num_residuals());
+    std::cout << std::endl; // XXX: debug output of residualsDuration
+    checkDoublesNear(residualsDuration, bResiduals, num_residuals());
 
-    if(jacobians){
+    if(jacobiansDuration){
       i = 0;
       for(auto & jBOrg : bJacobiansData){
         if(jBOrg){
           int16 s = num_residuals() * parameter_block_sizes()[i];
-          double * jA = jacobians[i], * jB = jBOrg;
+          double * jA = jacobiansDuration[i], * jB = jBOrg;
           double localParamJac[4 * 3], jAS[3 * 3], jBS[3 * 3];
           if(s == 3 * 4){
             s = 3 * 3;
@@ -208,11 +231,11 @@ struct ComparingCostFunction : public CostFunction {
 
           std::cout << "jA(" << i << ")=";
           printDoubles(std::cout, jA, s);
-          std::cout << std::endl; // XXX: debug output of residuals
+          std::cout << std::endl; // XXX: debug output of residualsDuration
 
           std::cout << "jB(" << i << ")=";
           printDoubles(std::cout, jB, s);
-          std::cout << std::endl; // XXX: debug output of residuals
+          std::cout << std::endl; // XXX: debug output of residualsDuration
 
           checkDoublesNear(jA, jB, s);
         }
@@ -233,12 +256,12 @@ struct ComparingCostFunction : public CostFunction {
   }
  private:
   CostFunction *a, *b;
-  DurationPair & durationPair;
+  Durations & durationPair;
 };
 
 
 #if COMPARE_WITH_CERES
-#define CHECK_COST(a, b, durationPair) new ComparingCostFunction(b, a, durationPair)
+#define CHECK_COST(a, b, durationPair) new ComparingCostFunction(a, b, durationPair)
 #else
 #define CHECK_COST(a, b, durationPair) a;
 #endif
@@ -406,34 +429,34 @@ namespace cerise{
                     // Acceleration
                     loss_function = FLAGS_robustify ? new HuberLoss(1.0) : NULL;
 #if USE_CERES_AD || COMPARE_WITH_CERES
-                    cost_function = new RepeatingCostFunction(new AutoDiffCostFunction<cerise::AccelerometerErrorQuat,3,4,1>(
+                    cost_function = wrapRepeatingCostFunction(new AutoDiffCostFunction<cerise::AccelerometerErrorQuat,3,4,1>(
                             new cerise::AccelerometerErrorQuat(dl.depth,dl.a[0],dl.a[1],dl.a[2], 100.0)));
 #endif
 #if !USE_CERES_AD || COMPARE_WITH_CERES
-                    cost_function = CHECK_COST(new RepeatingCostFunction(new cerise_tex::AccelerometerErrorQuat(dl.depth,dl.a[0],dl.a[1],dl.a[2], 100.0)), cost_function, accelerometerDuration);
+                    cost_function = CHECK_COST(wrapRepeatingCostFunction(new cerise_tex::AccelerometerErrorQuat(dl.depth,dl.a[0],dl.a[1],dl.a[2], 100.0)), cost_function, accelerometerDuration);
 #endif
                     problem.AddResidualBlock(cost_function,loss_function, oo.rotation,oo.propulsion);
 
                     // Magnetic field
                     loss_function = FLAGS_robustify ? new HuberLoss(100.0) : NULL;
 #if USE_CERES_AD || COMPARE_WITH_CERES
-                   cost_function = new RepeatingCostFunction(new AutoDiffCostFunction<cerise::MagnetometerErrorQuat,3,4>(
+                   cost_function = wrapRepeatingCostFunction(new AutoDiffCostFunction<cerise::MagnetometerErrorQuat,3,4>(
                             new cerise::MagnetometerErrorQuat(dl.m[0],dl.m[1],dl.m[2], 
                                 gps.B[0],gps.B[1],gps.B[2], 0.1)));
 #endif
 #if !USE_CERES_AD || COMPARE_WITH_CERES
-                   cost_function = CHECK_COST(new RepeatingCostFunction(new cerise_tex::MagnetometerErrorQuat(dl.m[0],dl.m[1],dl.m[2], gps.B[0],gps.B[1],gps.B[2], 0.1)), cost_function, magnetometerDuration);
+                   cost_function = CHECK_COST(wrapRepeatingCostFunction(new cerise_tex::MagnetometerErrorQuat(dl.m[0],dl.m[1],dl.m[2], gps.B[0],gps.B[1],gps.B[2], 0.1)), cost_function, magnetometerDuration);
 #endif
                     problem.AddResidualBlock(cost_function,loss_function,oo.rotation);
 
                     if (i>0) {
                         // Smoothness constraint
 #if USE_CERES_AD || COMPARE_WITH_CERES
-                        cost_function = new RepeatingCostFunction(new AutoDiffCostFunction<cerise::SmoothnessConstraint,1,1,1>(
+                        cost_function = wrapRepeatingCostFunction(new AutoDiffCostFunction<cerise::SmoothnessConstraint,1,1,1>(
                                 new cerise::SmoothnessConstraint(5e1)));
 #endif
 #if !USE_CERES_AD || COMPARE_WITH_CERES
-                        cost_function = CHECK_COST(new RepeatingCostFunction(new cerise_tex::SmoothnessConstraint(5e1)), cost_function, smoothnessDuration);
+                        cost_function = CHECK_COST(wrapRepeatingCostFunction(new cerise_tex::SmoothnessConstraint(5e1)), cost_function, smoothnessDuration);
 #endif
 
                         problem.AddResidualBlock(cost_function,NULL,oos.states[i-1].propulsion, oo.propulsion);
@@ -494,6 +517,12 @@ namespace cerise{
 
 int main(int argc, char *argv[])
 {
+#if USE_CERES_AD
+      std::cout << "Using ceres AD" << std::endl;
+#else
+      std::cout << "Using tex AD" << std::endl;
+#endif
+
     google::ParseCommandLineFlags(&argc, &argv, true);
     google::InitGoogleLogging(argv[0]);
     if (FLAGS_input.empty()) {
@@ -508,9 +537,14 @@ int main(int argc, char *argv[])
       problem.optimise();
 
 #if COMPARE_WITH_CERES
-      std::cout << "smoothnessDuration=" << std::endl << smoothnessDuration << std::endl; // XXX: debug output of smoothnessDuration
-      std::cout << "accelerometerDuration=" << std::endl << accelerometerDuration << std::endl; // XXX: debug output of accelerometerDuration
-      std::cout << "magnetometerDuration=" << std::endl << magnetometerDuration << std::endl; // XXX: debug output of magnetometerDuration
+      std::cout << "smoothnessDuration=" << std::endl << smoothnessDuration << std::endl;
+      std::cout << "accelerometerDuration=" << std::endl << accelerometerDuration << std::endl;
+      std::cout << "magnetometerDuration=" << std::endl << magnetometerDuration << std::endl;
+#endif
+
+#if MEASURE_IN_REPEAT
+      std::cout << "jacobiansDuration " << jacobiansDuration << std::endl;
+      std::cout << "residualsDuration " << residualsDuration << std::endl;
 #endif
 
       if (FLAGS_interactive) {
