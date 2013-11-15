@@ -94,8 +94,6 @@ auto TypedExpressionSolver<N>::createNewInstance(const typename RotationProblem<
       typedef RotateType<N, typename std::remove_reference<decltype(input.qC[0])>::type, typename std::remove_reference<decltype(p)>::type> RotateType;
 
       auto exp = RotateType::getExp(input.qC, p);
-      auto cache = createCache(exp);
-      cache.update(exp);
 
       switch(v){
         case benchmark::EvalVariants::Eval :{
@@ -114,11 +112,13 @@ auto TypedExpressionSolver<N>::createNewInstance(const typename RotationProblem<
 //            output.xy[1] = pRotated[1];
 //          output.xy = evalExp(exp);
           {
-            output.r = tex::toEigen(cache.accessValue(exp).getValue());
+            output.r = tex::toEigen(evalExp(exp).getValue());
           }
         }
         break;
         case benchmark::EvalVariants::EvalJacobian:
+          auto cache = createCache(exp);
+          cache.update(exp);
 //        {
 //          auto pRotated = exp.eval().getValue();
 //          for (int i : {0, 1, 2}) {

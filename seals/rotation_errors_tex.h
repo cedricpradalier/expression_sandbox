@@ -54,13 +54,13 @@ namespace cerise_tex {
         std::cout << "exp(SmoothnessConstraint)=" << exp << std::endl; // XXX: debug output of exp
 #endif
 
-        auto cache = createCache(exp);
-        cache.update(exp);
-
-        if(residuals)
-          *residuals = cache.accessValue(exp);
-
         if(jacobians){
+          auto cache = createCache(exp);
+          cache.update(exp);
+
+          if(residuals)
+            *residuals = cache.accessValue(exp);
+
           Eigen::Map<Eigen::Matrix<double, 1, 1>> J1(jacobians[0]);
           J1.setZero();
           evalFullDiffIntoCached(exp, movement_parameters_1, cache, J1);
@@ -68,6 +68,9 @@ namespace cerise_tex {
           Eigen::Map<Eigen::Matrix<double, 1, 1>> J2(jacobians[1]);
           J2.setZero();
           evalFullDiffIntoCached(exp, movement_parameters_2, cache, J2);
+        }
+        else if(residuals){
+            *residuals = evalExp(exp);
         }
         return true;
       }
@@ -90,14 +93,10 @@ namespace cerise_tex {
                             double* residuals,
                             double** jacobians) const {
 
-#if !NDEBUG || 1
           Eigen::Map<const Eigen::Matrix<double, 4, 1>> map(parameters[0]);
           UnitQuaternion q(map);
           Diffable<UnitQuaternion, 0> quaternion(q);
-#else
-//          CHECK_EQ(0, ((long)parameters[0])%16);
-          Diffable<Ref<UnitQuaternion>, 0> quaternion(reinterpret_cast<const UnitQuaternion&>(*parameters[0]));
-#endif
+
           Diffable<Ref<Scalar<double>>, 1> propulsion(reinterpret_cast<const Scalar<double>&>(*parameters[1]));
 
           // camera[0,1,2] are the angle-axis rotation.
@@ -110,6 +109,7 @@ namespace cerise_tex {
           std::cout << "exp(AccelerometerErrorQuat)=" << exp << std::endl; // XXX: debug output of exp
 #endif
 
+          assert(residuals);
           auto cache = createCache(exp, reinterpret_cast<EuclideanPoint<3> &>(*residuals));
           cache.update(exp);
 
@@ -150,14 +150,10 @@ namespace cerise_tex {
       virtual bool Evaluate(double const* const* parameters,
                             double* residuals,
                             double** jacobians) const {
-#if !NDEBUG
+
           Eigen::Map<const Eigen::Matrix<double, 4, 1>> map(parameters[0]);
           UnitQuaternion q(map);
           Diffable<UnitQuaternion, 0> quaternion(q);
-#else
-//          CHECK_EQ(0, ((long)parameters[0])%16);
-          Diffable<Ref<UnitQuaternion>, 0> quaternion(reinterpret_cast<const UnitQuaternion&>(*parameters[0]));
-#endif
 
           // camera[0,1,2] are the angle-axis rotation.
           auto corrected_body_mag = m && Ref<EuclideanPoint<3>>(reinterpret_cast<const EuclideanPoint<3> &>(cerise::MagnetometerErrorQuat::S));
@@ -168,10 +164,9 @@ namespace cerise_tex {
           std::cout << "exp(MagnetometerErrorQuat)=" << exp << std::endl; // XXX: debug output of exp
 #endif
 
-          auto cache = createCache(exp, reinterpret_cast<EuclideanPoint<3> &>(*residuals));
-          cache.update(exp);
-
           if(jacobians){
+            auto cache = createCache(exp, reinterpret_cast<EuclideanPoint<3> &>(*residuals));
+            cache.update(exp);
             Eigen::Matrix<double, 3, 3> quatJ;
 //            Eigen::Map<Eigen::Matrix<double, 3, 3>> quatJ(jacobians[0]);
 
@@ -185,6 +180,10 @@ namespace cerise_tex {
 //              -w2 * rot[2], 0, w2 * rot[0],
 //              w2 * rot[1], -w2 * rot[0], 0;
             removeLocalQuaternionParametrization(parametrization, parameters[0], quatJ, jacobians[0]);
+          }
+          else if(residuals){
+            Eigen::Map<Eigen::Matrix<double, 3, 1, Eigen::Unaligned>> resMap(residuals);
+            resMap = evalExp(exp).getValue();
           }
           return true;
         }
