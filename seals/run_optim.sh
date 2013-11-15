@@ -1,10 +1,11 @@
 #!/bin/sh
 
-../bin/optimise_rotations \
-    -num_threads 4 \
+../bin/optimise_rotations_tex_m \
+    -num_threads 1 \
     -use_local_parameterization \
     -input preload_mat_all.txt \
     -gps gps_mat_all.txt \
-    -robustify -interactive \
-    -display -num_lines 500000 
+    -robustify \
+    -display \
+    -num_lines 5000 
 
