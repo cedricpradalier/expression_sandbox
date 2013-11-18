@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import csv;
+from common import *;
 
 from matplotlib import *;
 from scipy import *;
@@ -8,10 +9,6 @@ from pylab import *;
 
 gTToSecFactor = 1.0/3.8 
 
-ceres_color = 'r'; #'0.7629,0.1073,0.4411'
-tex_color = 'g';
-ceres_name = "dual n. AD"
-tex_name = "BAD"
 
 color={
        'ceres' : ceres_color, 
@@ -22,14 +19,14 @@ color={
        'tex_mp' : tex_color,
        }
 linestyle={
-           'ceresRT' : 'dashed', 
-           'ceresRTmax' : 'dashed', 
-           'ceresJT' : 'dashed',
-           'ceresJTmax' : 'dashed',
-           'texRT' : '-', 
-           'texRTmax' : 'dashed', 
-           'texJT' : '-',
-           'texJTmax' : 'dashed',
+           'ceresRT' : ceres_ls, 
+           'ceresRTmax' : ceres_ls, 
+           'ceresJT' : ceres_ls,
+           'ceresJTmax' : ceres_ls,
+           'texRT' : tex_ls, 
+           'texRTmax' : tex_ls, 
+           'texJT' : tex_ls,
+           'texJTmax' : tex_ls,
         }
 
 

@@ -2,6 +2,7 @@
 
 import csv, sys, re;
 
+from common import *;
 from matplotlib import *;
 from scipy import *;
 from pylab import *;
@@ -9,10 +10,10 @@ from pylab import *;
 gTToSecFactor = 1.0/3.8 
 
 color={
-           'HandOptimizedFunction' : 'y', 
-           'CeresAutoDiffCostFunction' : 'r', 
-           'TypedExpressionSolver' : 'g',
-       }
+    'HandOptimizedFunction' : hand_color, 
+    'CeresAutoDiffCostFunction' : ceres_color, 
+    'TypedExpressionSolver' : tex_color,
+}
 
 linestyle={
    'RT' : 'dotted', 
@@ -23,22 +24,22 @@ linestyle={
 }
 
 timeTitle = {
-           'PT' : 'Preparation', 
-           'RT' : 'Residuals', 
-           'RTmax' : 'Residuals Max', 
-           'JT' : 'Jacobians',
-           'JTmax' : 'Jacobians Max'
+   'PT' : 'Preparation', 
+   'RT' : 'Residuals', 
+   'RTmax' : 'Residuals Max', 
+   'JT' : 'Jacobians',
+   'JTmax' : 'Jacobians Max'
 }
 
 
 data = {'HandOptimizedFunction' : dict(), 'TypedExpressionSolver' : dict(), 'CeresAutoDiffCostFunction' : dict()}
 title = {
-   'HandOptimizedFunction' : 'HandOptimizedFunction', 
-   'TypedExpressionSolver' : 'TypedExpressionSolver', 
-   'CeresAutoDiffCostFunction' : 'CeresAutoDiffCostFunction',
+   'HandOptimizedFunction' : hand_name, 
+   'TypedExpressionSolver' : tex_name, 
+   'CeresAutoDiffCostFunction' : ceres_name,
 }
 
-reader = csv.reader(open("benchmark_stat.csv", "rb"));
+reader = csv.reader(open("../benchmark/nrotations_1..20.csv", "rb"));
 
 def update(d, timeId, N, val):
     if not val : return 
@@ -77,20 +78,29 @@ for row in list(reader) :
         update(data[name], 'JT', N, JT)
         update(data[name], 'PT', N, PT)
 
-print data
 
-fig, axes = plt.subplots(figsize = (20, 10));
+for i in range(1, 20) :
+    print i, ":", data['CeresAutoDiffCostFunction']['JT'][i][0] / data['TypedExpressionSolver']['JT'][i][0];
+    print i, ":", data['TypedExpressionSolver']['JT'][i][0] / data['HandOptimizedFunction']['JT'][i][0];
 
-for name, d in data.iteritems() :
-    for timeId, dd in sorted(d.iteritems()) :
+
+
+for timeId in ('JT', ) :
+    fig, axes = plt.subplots(figsize = (8, 4));
+    axes.set_autoscaley_on(False)
+    axes.set_ylim([0,0.15])
+    axes.set_xlim([1,20])
+#     axes.set_autoscaley_on(True)
+    
+    for name, d in data.iteritems() :
+        dd = d[timeId];
         if not color[name] : continue
         a = numpy.array([ (x[0], x[1][0], x[1][1]) for x in list(sorted(dd.items()))]).transpose();
-        #axes.plot(a[0], a[2], color[name], linestyle=linestyle[timeId + "max"], label = ("%s:%s" % (title[name], timeTitle[timeId])))
-        axes.plot(a[0], a[1], color[name], linestyle=linestyle[timeId], label = ("%s:%s" % (title[name], timeTitle[timeId])))
+        #axes.plot(a[0], a[2], color[name], linestyle=linestyle[timeId + "max"], label = ("%s" % (title[name])))
+        axes.plot(a[0], a[1], color[name], linestyle=linestyle[timeId], label = ("%s" % (title[name])))
         
-axes.set_xlabel('N')
-axes.set_ylabel('t')
-axes.set_title('title');
-axes.legend(loc='upper left')
-savefig('seals_optimization_stat.pdf')
+    axes.set_xlabel('N')
+    axes.set_ylabel('t in seconds')
+    axes.legend(loc='upper left')
+    savefig('../../isrr13-optimization/article/figures/N_rotations.pdf')
 show()

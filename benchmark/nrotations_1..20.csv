@@ -1,0 +1,140 @@
+NEW PROBLEM(rotation_problem(N=1)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000378564,8,4.94e-05,0.000103392,
+TypedExpressionSolver[1](eigLinTDepth10),0.000371376,8,5.894e-05,0.000117644,
+CeresAutoDiffCostFunction,0.000854164,69,5.4672e-05,0.000671804,
+
+NEW PROBLEM(rotation_problem(N=2)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000131664,8,0.000113,0.000302408,
+TypedExpressionSolver[2](eigLinTDepth10),0.000131952,8,9.118e-05,0.000239904,
+CeresAutoDiffCostFunction,0.000607876,69,7.4552e-05,0.00244121,
+
+NEW PROBLEM(rotation_problem(N=3)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000146356,8,0.000135516,0.000442588,
+TypedExpressionSolver[3](eigLinTDepth10),0.000127936,8,0.000124488,0.000411316,
+CeresAutoDiffCostFunction,0.00058836,69,0.000101932,0.00556447,
+
+NEW PROBLEM(rotation_problem(N=4)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000136968,8,0.000153524,0.000586244,
+TypedExpressionSolver[4](eigLinTDepth10),0.000139512,8,0.000175292,0.000697512,
+CeresAutoDiffCostFunction,0.000608348,69,0.000139396,0.00707745,
+
+NEW PROBLEM(rotation_problem(N=5)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000139372,8,0.00017726,0.000741364,
+TypedExpressionSolver[5](eigLinTDepth10),0.000134452,8,0.000212116,0.00112478,
+CeresAutoDiffCostFunction,0.000595312,69,0.000168756,0.0118483,
+
+NEW PROBLEM(rotation_problem(N=6)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000133404,8,0.00019792,0.000899308,
+TypedExpressionSolver[6](eigLinTDepth10),0.000132324,8,0.000250416,0.00152762,
+CeresAutoDiffCostFunction,0.000606748,69,0.000199156,0.0184576,
+
+NEW PROBLEM(rotation_problem(N=7)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000151884,8,0.000217584,0.0010547,
+TypedExpressionSolver[7](eigLinTDepth10),0.000136084,8,0.00028978,0.00195413,
+CeresAutoDiffCostFunction,0.000674196,69,0.000230908,0.0238965,
+
+NEW PROBLEM(rotation_problem(N=8)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000132808,8,0.00023656,0.00121534,
+TypedExpressionSolver[8](eigLinTDepth10),0.000141876,8,0.000330988,0.00255817,
+CeresAutoDiffCostFunction,0.000604044,69,0.000258048,0.0265488,
+
+NEW PROBLEM(rotation_problem(N=9)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.00012926,8,0.000258792,0.0013721,
+TypedExpressionSolver[9](eigLinTDepth10),0.000130032,8,0.000358036,0.00305567,
+CeresAutoDiffCostFunction,0.000593836,69,0.00028704,0.0351739,
+
+NEW PROBLEM(rotation_problem(N=10)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000153544,8,0.000320748,0.00163057,
+TypedExpressionSolver[10](eigLinTDepth10),0.000151784,8,0.000363848,0.0036029,
+CeresAutoDiffCostFunction,0.000610012,69,0.000376284,0.0425411,
+
+NEW PROBLEM(rotation_problem(N=11)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000138636,8,0.000338144,0.00182845,
+TypedExpressionSolver[11](eigLinTDepth10),0.000137036,8,0.000400084,0.00412307,
+CeresAutoDiffCostFunction,0.000650164,69,0.000401632,0.0498217,
+
+NEW PROBLEM(rotation_problem(N=12)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000142284,8,0.00039262,0.00190663,
+TypedExpressionSolver[12](eigLinTDepth10),0.000181964,8,0.000475839,0.00488808,
+CeresAutoDiffCostFunction,0.00065652,69,0.000411897,0.0600365,
+
+NEW PROBLEM(rotation_problem(N=13)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000153174,8,0.000397026,0.00208823,
+TypedExpressionSolver[13](eigLinTDepth10),0.000134292,8,0.000510702,0.00583971,
+CeresAutoDiffCostFunction,0.000639138,69,0.000434592,0.0685467,
+
+NEW PROBLEM(rotation_problem(N=14)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000130899,8,0.000475638,0.00227705,
+TypedExpressionSolver[14](eigLinTDepth10),0.00015264,8,0.000554415,0.00677077,
+CeresAutoDiffCostFunction,0.000654228,69,0.000458607,0.0798139,
+
+NEW PROBLEM(rotation_problem(N=15)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000127494,8,0.000579705,0.00245644,
+TypedExpressionSolver[15](eigLinTDepth10),0.00015471,8,0.000595782,0.00727551,
+CeresAutoDiffCostFunction,0.00061773,69,0.000496005,0.0889543,
+
+NEW PROBLEM(rotation_problem(N=16)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000168996,8,0.000696465,0.00265615,
+TypedExpressionSolver[16](eigLinTDepth10),0.00012699,8,0.000625911,0.00865082,
+CeresAutoDiffCostFunction,0.000645969,69,0.000519519,0.101913,
+
+NEW PROBLEM(rotation_problem(N=17)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000132402,8,0.000577866,0.00287242,
+TypedExpressionSolver[17](eigLinTDepth10),0.000142221,8,0.000670977,0.0106554,
+CeresAutoDiffCostFunction,0.000587433,69,0.000551412,0.115146,
+
+NEW PROBLEM(rotation_problem(N=18)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.0001512,8,0.000524868,0.00299161,
+TypedExpressionSolver[18](eigLinTDepth10),0.00013737,8,0.000719955,0.0115138,
+CeresAutoDiffCostFunction,0.000648291,69,0.000531531,0.137754,
+
+NEW PROBLEM(rotation_problem(N=19)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000136122,8,0.000709308,0.0033355,
+TypedExpressionSolver[19](eigLinTDepth10),0.000132333,8,0.000733674,0.0131116,
+CeresAutoDiffCostFunction,0.000603951,69,0.000620415,0.150357,
+
+NEW PROBLEM(rotation_problem(N=20)):
+Name,prepare(s),mem(byte/inst),Eval:solve(s),eJac:solve(s),
+NEW BENCHMARK(numberOfProblemInstancesToSolve=1000,numberOfRepetitionsPerProblemInstance=1)
+HandOptimizedFunction,0.000154884,8,0.000464679,0.00309937,
+TypedExpressionSolver[20](eigLinTDepth10),0.000152427,8,0.000749052,0.0137581,
+CeresAutoDiffCostFunction,0.000575457,69,0.000562158,0.163395,
+
