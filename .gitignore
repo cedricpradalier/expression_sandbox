@@ -18,3 +18,5 @@
 /.pydevproject
 /.~lock.stat.csv#
 /stat*.csv
+*.pyc
+*~

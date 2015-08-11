@@ -9,3 +9,5 @@ hand_name = "manual"
 ceres_ls = 'dashed'
 tex_ls = 'solid'
 hand_ls = ':'
+
+outputDir = '../../isrr13-optimization/article/figures/'

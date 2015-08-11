@@ -84,7 +84,6 @@ for i in range(1, 20) :
     print i, ":", data['TypedExpressionSolver']['JT'][i][0] / data['HandOptimizedFunction']['JT'][i][0];
 
 
-
 for timeId in ('JT', ) :
     fig, axes = plt.subplots(figsize = (8, 4));
     axes.set_autoscaley_on(False)
@@ -102,5 +101,6 @@ for timeId in ('JT', ) :
     axes.set_xlabel('N')
     axes.set_ylabel('t in seconds')
     axes.legend(loc='upper left')
-    savefig('../../isrr13-optimization/article/figures/N_rotations.pdf')
+    grid()
+    savefig(outputDir + 'N_rotations.pdf')
 show()

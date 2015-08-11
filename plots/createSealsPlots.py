@@ -105,7 +105,8 @@ for timeId in ('JT', 'RT') :
         axes.set_xlabel('N in 1000 input lines')
         axes.set_ylabel('t in seconds')
         axes.legend(loc='upper left')
-        savefig("seals_optimization_stat%s_%s.pdf" % (suffix, timeId))
-    
+        grid()
+        savefig(outputDir + "seals_optimization_stat%s_%s.pdf" % (suffix, timeId))
+
 show()
 
