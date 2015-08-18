@@ -20,3 +20,4 @@
 /stat*.csv
 *.pyc
 *~
+/benchmark/stats/
